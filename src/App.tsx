@@ -8,6 +8,7 @@ import Maze from "./Pages/Maze";
 import AiVtuber from "./Pages/AiVtuber";
 import UnityGameCompo from "./Component/UnityGameCompo";
 import ContextAPI_Test from "./Pages/ContextAPI_Test";
+import Login from "./Pages/Login";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/aivtuber" element={<AiVtuber />} />
           <Route path="/unitychan" element={<UnityGameCompo />} />
           <Route path="/maze" element={<Maze />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/contextapi_test" element={<ContextAPI_Test />} />
         </Routes>
         <Footer />
