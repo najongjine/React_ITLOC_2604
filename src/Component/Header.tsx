@@ -10,7 +10,7 @@ const Header: React.FC = () => {
   return (
     <header className="header">
       <div className="header-top">
-        <NavLink to="/" className="header-login">
+        <NavLink to="/login" className="header-login">
           로그인
         </NavLink>
       </div>
