@@ -8,6 +8,7 @@ const Login: React.FC = () => {
   const mode = import.meta.env.MODE;
   const [user, setUser] = useState<User | null>(null);
 
+  // 구글 로그인 팝업 띄우는 놈
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -18,6 +19,7 @@ const Login: React.FC = () => {
     }
   };
 
+  // 로그아웃 기능 껍데기 인터페이스
   const handleLogout = async () => {
     await signOut(auth);
     setUser(null);

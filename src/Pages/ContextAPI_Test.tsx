@@ -1,14 +1,19 @@
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 
+/**
+ * clearToken : 로그아웃
+ */
 const ContextAPI_Test: React.FC = () => {
   const { token, isAuthenticated, setToken, clearToken, checkToken, authMessage } = useAuth();
 
+  // 로그인 하는 코드
   const handleLoginTest = () => {
     const serverToken = "server-token-example";
     setToken(serverToken);
   };
 
+  // 로그인 만료 체크 코드
   const handleCheckToken = async () => {
     const result = await checkToken();
 
