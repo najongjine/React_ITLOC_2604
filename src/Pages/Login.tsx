@@ -2,10 +2,20 @@ import { useState } from "react";
 import { signInWithPopup, signOut, User } from "firebase/auth";
 import { auth, googleProvider } from "../Utils/firebase";
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+
+type CommonResponse<T = unknown> = {
+  success: boolean;
+  data?: T | null;
+  msg?: string;
+};
+
+const LOGIN_REGISTER_PATH = "/user/login_register";
+
+function joinUrl(baseUrl: string, path: string) {
+  return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+}
 
 const Login: React.FC = () => {
-  const mode = import.meta.env.MODE;
   const [user, setUser] = useState<User | null>(null);
 
   // 구글 로그인 팝업 띄우는 놈
@@ -18,8 +28,33 @@ const Login: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      console.log(`## result: \n`,result?.user)
-      setUser(result.user);
+      const firebaseUser = result.user;
+      const authServerUrl = import.meta.env.VITE_AUTH_VALIDATE_URL;
+
+      if (!authServerUrl) {
+        throw new Error("VITE_AUTH_VALIDATE_URL is not configured.");
+      }
+
+      const formData = new FormData();
+      formData.append("provider", firebaseUser.providerData[0]?.providerId ?? "google.com");
+      formData.append("firebase_uid", firebaseUser.uid);
+      formData.append("email", firebaseUser.email ?? "");
+      formData.append("display_name", firebaseUser.displayName ?? "");
+      formData.append("photo_url", firebaseUser.photoURL ?? "");
+
+      const response = await fetch(joinUrl(authServerUrl, LOGIN_REGISTER_PATH), {
+        method: "POST",
+        body: formData,
+      });
+      const apiResult = (await response.json()) as CommonResponse;
+
+      if (!response.ok || !apiResult.success) {
+        throw new Error(apiResult.msg || `Login API failed. HTTP ${response.status}`);
+      }
+
+      console.log("## Firebase user:", firebaseUser);
+      console.log("## login_register result:", apiResult);
+      setUser(firebaseUser);
     } catch (error) {
       console.error("로그인 실패:", error);
     }
