@@ -1,0 +1,24 @@
+VITE_AUTH_VALIDATE_URL
+.env 에 내 서버 주소 있어.
+
+router = APIRouter(
+    prefix="/user",
+    tags=["user"]
+)
+
+@router.post("/login_register")
+def login_register(provider: str = Form(""), firebase_uid: str = Form(""),
+                   email: str = Form(""),display_name: str = Form(""),
+                   photo_url: str = Form("")):
+...
+
+서버 응답형식:
+class CommonResponse(BaseModel, Generic[T]):
+    success: bool=True
+    data: Optional[T] = None
+    msg: str = ""
+-----------------
+이게 내 파이썬 서버 api 야.
+여기에 fetch로 데이터 보내서 결과 받는 코드 
+Login.tsx, const handleGoogleLogin = async () => {
+여기에 만들어줘

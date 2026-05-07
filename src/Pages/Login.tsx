@@ -9,6 +9,12 @@ const Login: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
 
   // 구글 로그인 팝업 띄우는 놈
+  /*
+  구글 로그인을 하면, 구글 회사에 로그인 한것과 같은 효과가 나오고
+  구글 회사는 우리가 뭘 원하는지 모르니 그냥 다 줘요
+  그러면 우리 입장에선,
+  providerId, uid, displayName, email
+   */
   const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
