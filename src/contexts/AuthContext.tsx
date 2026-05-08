@@ -8,19 +8,25 @@ import {
 } from "react";
 import { validateAuthToken, type ApiResponse } from "../services/authApi";
 import {
+  getStoredAuthUser,
   getStoredAuthToken,
-  removeStoredAuthToken,
+  removeStoredAuthSession,
+  removeStoredAuthUser,
+  saveStoredAuthUser,
   saveStoredAuthToken,
+  type AuthUser,
 } from "../services/authTokenStorage";
 
 type AuthStatus = "idle" | "checking" | "authenticated" | "unauthenticated";
 
 type AuthContextValue = {
   token: string | null;
+  user: AuthUser | null;
   status: AuthStatus;
   authMessage: string;
   isAuthenticated: boolean;
   setToken: (token: string) => void;
+  setAuthSession: (token: string, user: AuthUser) => void;
   getToken: () => string | null;
   loadToken: () => string | null;
   clearToken: () => void;
@@ -35,6 +41,7 @@ type AuthProviderProps = {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setTokenState] = useState<string | null>(() => getStoredAuthToken());
+  const [user, setUserState] = useState<AuthUser | null>(() => getStoredAuthUser());
   const [status, setStatus] = useState<AuthStatus>(() =>
     getStoredAuthToken() ? "authenticated" : "unauthenticated"
   );
@@ -42,7 +49,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const setToken = useCallback((nextToken: string) => {
     saveStoredAuthToken(nextToken);
+    removeStoredAuthUser();
     setTokenState(nextToken);
+    setUserState(null);
+    setStatus("authenticated");
+    setAuthMessage("");
+  }, []);
+
+  const setAuthSession = useCallback((nextToken: string, nextUser: AuthUser) => {
+    saveStoredAuthToken(nextToken);
+    saveStoredAuthUser(nextUser);
+    setTokenState(nextToken);
+    setUserState(nextUser);
     setStatus("authenticated");
     setAuthMessage("");
   }, []);
@@ -53,16 +71,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const loadToken = useCallback(() => {
     const storedToken = getStoredAuthToken();
+    const storedUser = getStoredAuthUser();
 
     setTokenState(storedToken);
+    setUserState(storedUser);
     setStatus(storedToken ? "authenticated" : "unauthenticated");
 
     return storedToken;
   }, []);
 
   const clearToken = useCallback(() => {
-    removeStoredAuthToken();
+    removeStoredAuthSession();
     setTokenState(null);
+    setUserState(null);
     setStatus("unauthenticated");
   }, []);
 
@@ -74,13 +95,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     if (result.success) {
       setTokenState(currentToken);
+      setUserState(getStoredAuthUser());
       setStatus("authenticated");
       setAuthMessage("");
       return result;
     }
 
-    removeStoredAuthToken();
+    removeStoredAuthSession();
     setTokenState(null);
+    setUserState(null);
     setStatus("unauthenticated");
     setAuthMessage(result.msg);
 
@@ -90,16 +113,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value = useMemo(
     () => ({
       token,
+      user,
       status,
       authMessage,
       isAuthenticated: status === "authenticated" && Boolean(token),
       setToken,
+      setAuthSession,
       getToken,
       loadToken,
       clearToken,
       checkToken,
     }),
-    [authMessage, checkToken, clearToken, getToken, loadToken, setToken, status, token]
+    [
+      authMessage,
+      checkToken,
+      clearToken,
+      getToken,
+      loadToken,
+      setAuthSession,
+      setToken,
+      status,
+      token,
+      user,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
