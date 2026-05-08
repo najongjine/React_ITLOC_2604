@@ -1,27 +1,49 @@
 import React from "react";
+import { signOut } from "firebase/auth";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { auth } from "../Utils/firebase";
 import "./Header.css";
 
-import { useAuth } from "../contexts/AuthContext";
-
-const menuItems = [
-  { path: "/", label: "Home" },
-];
+const menuItems = [{ path: "/", label: "Home" }];
 
 const Header: React.FC = () => {
-  const {
-  token,
-  user,
-  isAuthenticated,
-  setAuthSession,
-  clearToken,
-} = useAuth();
+  const { user, isAuthenticated, clearToken } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    clearToken();
+  };
+
   return (
     <header className="header">
       <div className="header-top">
-        <NavLink to="/login" className="header-login">
-          로그인
-        </NavLink>
+        {isAuthenticated && user ? (
+          <div className="header-user">
+            {user.photo_url && (
+              <img
+                src={user.photo_url}
+                alt=""
+                className="header-user-image"
+              />
+            )}
+            <div className="header-user-info">
+              <span className="header-user-name">{user.display_name}</span>
+              <span className="header-user-email">{user.email}</span>
+            </div>
+            <button
+              type="button"
+              className="header-logout"
+              onClick={handleLogout}
+            >
+              로그아웃
+            </button>
+          </div>
+        ) : (
+          <NavLink to="/login" className="header-login">
+            로그인
+          </NavLink>
+        )}
       </div>
 
       <div className="header-main">
@@ -43,9 +65,6 @@ const Header: React.FC = () => {
             </NavLink>
           ))}
         </nav>
-      </div>
-      <div>
-        유저id: {user?.id}
       </div>
     </header>
   );
