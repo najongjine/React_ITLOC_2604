@@ -18,7 +18,7 @@ const Header: React.FC = () => {
   return (
     <header className="header">
       <div className="header-top">
-        {isAuthenticated && user ? (
+        {user?.id ? (
           <div className="header-user">
             {user.photo_url && (
               <img
