@@ -2,11 +2,20 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import "./Header.css";
 
+import { useAuth } from "../contexts/AuthContext";
+
 const menuItems = [
   { path: "/", label: "Home" },
 ];
 
 const Header: React.FC = () => {
+  const {
+  token,
+  user,
+  isAuthenticated,
+  setAuthSession,
+  clearToken,
+} = useAuth();
   return (
     <header className="header">
       <div className="header-top">
@@ -34,6 +43,9 @@ const Header: React.FC = () => {
             </NavLink>
           ))}
         </nav>
+      </div>
+      <div>
+        유저id: {user?.id}
       </div>
     </header>
   );
