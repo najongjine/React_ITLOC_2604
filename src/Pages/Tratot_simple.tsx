@@ -12,6 +12,12 @@ const Tratot_simple: React.FC = () => {
     "마법사 카드",
     "운명의 수레바퀴 카드"
   ]
+  function drawCard(){
+    // 랜덤 숫자(정수) 0~cards 길이
+    const randomIndex=Math.floor(Math.random()*cards.length);
+    const selectedCard = cards[randomIndex];
+    console.log(`# selectedCard: `,selectedCard);
+  }
   return (
     <div className="">
       <div>Tratot_simple</div>
