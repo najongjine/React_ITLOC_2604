@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { auth } from "../Utils/firebase";
 import "./Header.css";
 
-const menuItems = [{ path: "/", label: "Home" }];
+const menuItems = [{ path: "/", label: "Home" },{ path: "/tratot_simple", label: "타로심플" }];
 
 const Header: React.FC = () => {
   const { user, isAuthenticated, clearToken } = useAuth();
