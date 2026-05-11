@@ -1,4 +1,6 @@
-
+/**
+ https://chatgpt.com/share/6a0130b3-c550-83a4-98f9-56bd5c7d2433
+ */
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 
