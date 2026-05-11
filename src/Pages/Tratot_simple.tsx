@@ -6,6 +6,11 @@ import { Link, useNavigate } from "react-router-dom";
 
 const Tratot_simple: React.FC = () => {
   const mode = import.meta.env.MODE;
+  const categories=[
+    "건강",
+    "금전",
+    "연애"
+  ]
   const cards=[
     {name:"태양 카드",meaning:"밝은 결과, 성공, 자신감, 좋은 흐름을 의미합니다"},
     {name:"달 카드",meaning:"불안, 착각, 숨겨진 진실, 아직 확실하지 않은 상황을 의미합니다"},
