@@ -1,3 +1,6 @@
+/**
+ * https://chatgpt.com/share/6a0276fb-a940-83a5-9f06-5bbac90ea4ad
+ */
 import React, { useState } from "react";
 
 type Category = "love" | "money" | "study";
