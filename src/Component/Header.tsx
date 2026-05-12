@@ -5,10 +5,14 @@ import { useAuth } from "../contexts/AuthContext";
 import { auth } from "../Utils/firebase";
 import "./Header.css";
 
-const menuItems = [{ path: "/", label: "Home" },{ path: "/tratot_simple", label: "타로심플" }];
+const menuItems = [
+  { path: "/", label: "Home" },
+  { path: "/tratot_simple", label: "타로심플" },
+  { path: "/tratot_no_ai", label: "타로전문가" },
+];
 
 const Header: React.FC = () => {
-  const { user, isAuthenticated, clearToken } = useAuth();
+  const { user, clearToken } = useAuth();
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -21,21 +25,13 @@ const Header: React.FC = () => {
         {user?.id ? (
           <div className="header-user">
             {user.photo_url && (
-              <img
-                src={user.photo_url}
-                alt=""
-                className="header-user-image"
-              />
+              <img src={user.photo_url} alt="" className="header-user-image" />
             )}
             <div className="header-user-info">
               <span className="header-user-name">{user.display_name}</span>
               <span className="header-user-email">{user.email}</span>
             </div>
-            <button
-              type="button"
-              className="header-logout"
-              onClick={handleLogout}
-            >
+            <button type="button" className="header-logout" onClick={handleLogout}>
               로그아웃
             </button>
           </div>

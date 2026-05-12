@@ -1,1076 +1,1009 @@
-/**
- * https://chatgpt.com/share/6a0276fb-a940-83a5-9f06-5bbac90ea4ad
- */
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
-type Category = "love" | "money" | "study";
+type Category = "love" | "money" | "study" | "career";
+type Suit = "major" | "wands" | "cups" | "swords" | "pentacles";
+type Tone = "bright" | "steady" | "caution" | "turning";
 
 type TarotCard = {
+  id: string;
   name: string;
-  keywords: string;
+  arcana: string;
+  suit: Suit;
   img: string;
-  meaning: {
-    love: string;
-    money: string;
-    study: string;
-  };
+  keywords: string[];
+  tone: Tone;
+  core: string;
+};
+
+type DrawnCard = TarotCard & {
+  reversed: boolean;
+};
+
+type SpreadSlot = {
+  title: string;
+  subtitle: string;
 };
 
 const categoryLabels: Record<Category, string> = {
-  love: "연애",
-  money: "금전",
-  study: "학업",
+  love: "연애 / 관계",
+  money: "금전 / 재물",
+  study: "학업 / 시험",
+  career: "진로 / 일",
 };
 
-const initialTarotCards: TarotCard[] = [
-  {
-    name: "바보",
-    keywords: "자유, 시작, 모험",
-    img: "/img/tarotcards/major-00-fool.jpg",
-    meaning: {
-      love: "새로운 만남이 가볍게 시작될 수 있습니다. 설렘은 크지만 아직 깊이를 판단하기엔 이르니 편하게 알아가세요.",
-      money:
-        "새로운 수입 기회가 보일 수 있지만 충동적인 지출도 생기기 쉽습니다. 돈을 쓰기 전 한 번 더 확인하세요.",
-      study:
-        "새 과목이나 공부법을 시작하기 좋은 흐름입니다. 다만 계획 없이 덤비면 금방 흐트러질 수 있습니다.",
-    },
-  },
-  {
-    name: "마법사",
-    keywords: "능력, 실행, 창조",
-    img: "/img/tarotcards/major-01-magician.jpg",
-    meaning: {
-      love: "말과 표현이 매력적으로 전달됩니다. 마음이 있다면 직접 표현할수록 관계가 움직입니다.",
-      money:
-        "가진 기술이나 아이디어를 돈으로 바꿀 수 있는 시기입니다. 실행력이 수익을 만듭니다.",
-      study:
-        "집중력과 이해력이 좋아집니다. 배운 내용을 응용하면 실력이 빠르게 늘어납니다.",
-    },
-  },
-  {
-    name: "여사제",
-    keywords: "직감, 비밀, 내면",
-    img: "/img/tarotcards/major-02-high-priestess.jpg",
-    meaning: {
-      love: "상대의 마음이 겉으로 잘 드러나지 않습니다. 서두르기보다 분위기와 행동을 조용히 살피세요.",
-      money:
-        "확실하지 않은 정보에 돈을 걸면 위험합니다. 자료를 더 모으고 판단하는 편이 좋습니다.",
-      study:
-        "깊게 읽고 혼자 정리하는 공부에 강합니다. 암기보다 이해 중심으로 접근하세요.",
-    },
-  },
-  {
-    name: "여황제",
-    keywords: "풍요, 사랑, 성장",
-    img: "/img/tarotcards/major-03-empress.jpg",
-    meaning: {
-      love: "다정하고 따뜻한 관계운입니다. 호감이 자연스럽게 자라고 편안한 분위기가 만들어집니다.",
-      money:
-        "돈의 흐름이 부드럽고 만족스러운 소비도 있습니다. 다만 기분에 따른 과소비는 조심하세요.",
-      study:
-        "창의력과 감각을 쓰는 공부에 좋습니다. 결과가 천천히 자라나는 시기입니다.",
-    },
-  },
-  {
-    name: "황제",
-    keywords: "권위, 질서, 책임",
-    img: "/img/tarotcards/major-04-emperor.jpg",
-    meaning: {
-      love: "관계를 분명히 정하고 책임지는 태도가 필요합니다. 애매함보다 확실한 약속이 중요합니다.",
-      money:
-        "예산과 규칙을 세우면 돈이 안정됩니다. 감정보다 숫자를 보고 판단하세요.",
-      study:
-        "계획표와 루틴이 성적을 만듭니다. 기초부터 체계적으로 쌓는 공부가 맞습니다.",
-    },
-  },
-  {
-    name: "교황",
-    keywords: "전통, 조언, 믿음",
-    img: "/img/tarotcards/major-05-hierophant.jpg",
-    meaning: {
-      love: "가볍기보다 진지한 관계에 어울립니다. 믿음, 약속, 소개를 통한 만남이 좋습니다.",
-      money:
-        "검증된 방식이 안전합니다. 전문가 조언이나 기존 원칙을 따르는 편이 유리합니다.",
-      study:
-        "선생님, 강의, 기본서의 도움을 받기 좋습니다. 혼자 꼼수 찾기보다 정석이 통합니다.",
-    },
-  },
-  {
-    name: "연인",
-    keywords: "선택, 관계, 끌림",
-    img: "/img/tarotcards/major-06-lovers.jpg",
-    meaning: {
-      love: "강한 끌림과 중요한 선택이 함께 옵니다. 마음이 향하는 곳을 솔직하게 인정해야 합니다.",
-      money:
-        "좋아 보이는 선택지가 여러 개 생깁니다. 감정이 아니라 기준을 세워 골라야 합니다.",
-      study:
-        "진로와 공부 방향을 정하기 좋은 시기입니다. 하고 싶은 것과 해야 할 것을 조율하세요.",
-    },
-  },
-  {
-    name: "전차",
-    keywords: "승리, 추진력, 목표",
-    img: "/img/tarotcards/major-07-chariot.jpg",
-    meaning: {
-      love: "적극적으로 움직이면 관계가 빠르게 진전됩니다. 망설임보다 확실한 태도가 필요합니다.",
-      money:
-        "목표 금액을 정하고 밀어붙이면 성과가 납니다. 속도는 좋지만 무리한 경쟁은 피하세요.",
-      study:
-        "단기간 집중에 강합니다. 시험, 발표, 과제 마감에 승부를 걸기 좋습니다.",
-    },
-  },
-  {
-    name: "힘",
-    keywords: "인내, 용기, 절제",
-    img: "/img/tarotcards/major-08-strength.jpg",
-    meaning: {
-      love: "부드럽게 기다리는 힘이 필요합니다. 억지로 밀기보다 이해하고 감싸면 관계가 좋아집니다.",
-      money:
-        "큰 욕심보다 꾸준한 관리가 유리합니다. 참고 버티면 재정 흐름이 안정됩니다.",
-      study:
-        "끈기가 성과를 만듭니다. 어려운 단원도 반복하면 결국 넘어갈 수 있습니다.",
-    },
-  },
-  {
-    name: "은둔자",
-    keywords: "성찰, 탐구, 고독",
-    img: "/img/tarotcards/major-09-hermit.jpg",
-    meaning: {
-      love: "혼자 생각할 시간이 필요합니다. 관계를 급하게 진전시키기보다 내 마음부터 확인하세요.",
-      money:
-        "큰 투자보다 점검과 절약에 맞습니다. 돈이 어디로 새는지 조용히 살펴보세요.",
-      study:
-        "혼자 깊게 파고드는 공부에 좋습니다. 복습과 오답 정리가 큰 도움이 됩니다.",
-    },
-  },
-  {
-    name: "운명의 수레바퀴",
-    keywords: "변화, 기회, 흐름",
-    img: "/img/tarotcards/major-10-wheel-of-fortune.jpg",
-    meaning: {
-      love: "예상하지 못한 만남이나 관계의 전환이 생길 수 있습니다. 흐름이 바뀌는 순간을 놓치지 마세요.",
-      money:
-        "돈의 흐름이 갑자기 바뀔 수 있습니다. 좋은 기회도 빠르게 오니 준비가 필요합니다.",
-      study:
-        "정체됐던 공부에 변화가 생깁니다. 새로운 방식이나 환경이 도움이 됩니다.",
-    },
-  },
-  {
-    name: "정의",
-    keywords: "균형, 판단, 공정",
-    img: "/img/tarotcards/major-11-justice.jpg",
-    meaning: {
-      love: "감정만으로 판단하면 흔들립니다. 서로에게 공정한 관계인지 차분히 따져보세요.",
-      money:
-        "계약, 정산, 계산을 정확히 해야 합니다. 대충 넘기면 나중에 문제가 됩니다.",
-      study:
-        "노력한 만큼 결과가 나옵니다. 부족한 부분을 객관적으로 인정하는 것이 먼저입니다.",
-    },
-  },
-  {
-    name: "행맨",
-    keywords: "희생, 정지, 관점",
-    img: "/img/tarotcards/major-12-hanged-man.jpg",
-    meaning: {
-      love: "관계가 잠시 멈춘 듯 느껴질 수 있습니다. 지금은 다른 관점에서 상대를 이해해야 합니다.",
-      money:
-        "큰 결정보다 기다림이 낫습니다. 당장 이득이 없어도 상황을 보는 시간이 필요합니다.",
-      study:
-        "진도가 느려도 괜찮습니다. 막힌 개념을 다른 방식으로 다시 보면 풀립니다.",
-    },
-  },
-  {
-    name: "죽음",
-    keywords: "끝, 변화, 재시작",
-    img: "/img/tarotcards/major-13-death.jpg",
-    meaning: {
-      love: "낡은 관계 방식이 끝나고 새 국면이 시작됩니다. 붙잡을 것과 놓을 것을 구분하세요.",
-      money:
-        "불필요한 지출이나 손해 보는 구조를 정리해야 합니다. 정리 뒤에 새 기회가 옵니다.",
-      study:
-        "기존 공부법이 맞지 않을 수 있습니다. 과감히 방식을 바꾸면 다시 살아납니다.",
-    },
-  },
-  {
-    name: "절제",
-    keywords: "조화, 균형, 회복",
-    img: "/img/tarotcards/major-14-temperance.jpg",
-    meaning: {
-      love: "서로 다른 점을 맞춰가면 관계가 안정됩니다. 속도 조절이 중요합니다.",
-      money:
-        "수입과 지출의 균형을 잡기 좋습니다. 무리하지 않는 관리가 재정을 회복시킵니다.",
-      study:
-        "매일 조금씩 꾸준히 하는 공부가 맞습니다. 벼락치기보다 균형 잡힌 루틴이 좋습니다.",
-    },
-  },
-  {
-    name: "악마",
-    keywords: "집착, 유혹, 속박",
-    img: "/img/tarotcards/major-15-devil.jpg",
-    meaning: {
-      love: "강한 끌림이 있지만 집착이나 의존으로 흐르기 쉽습니다. 감정의 균형을 지키세요.",
-      money:
-        "충동구매, 빚, 위험한 제안에 주의해야 합니다. 당장의 즐거움이 부담으로 돌아올 수 있습니다.",
-      study:
-        "딴짓과 유혹이 공부를 방해합니다. 휴대폰, 게임, 미루는 습관을 끊는 게 먼저입니다.",
-    },
-  },
-  {
-    name: "타워",
-    keywords: "충격, 붕괴, 각성",
-    img: "/img/tarotcards/major-16-tower.jpg",
-    meaning: {
-      love: "숨겨진 문제가 드러나 관계가 흔들릴 수 있습니다. 불편해도 진실을 마주해야 합니다.",
-      money:
-        "갑작스러운 지출이나 손실에 대비하세요. 안전장치 없이 움직이면 위험합니다.",
-      study:
-        "계획이 무너질 수 있지만 다시 세우면 됩니다. 약한 부분이 드러난 것을 기회로 보세요.",
-    },
-  },
-  {
-    name: "별",
-    keywords: "희망, 치유, 가능성",
-    img: "/img/tarotcards/major-17-star.jpg",
-    meaning: {
-      love: "맑고 희망적인 감정이 살아납니다. 상처가 있었다면 천천히 회복됩니다.",
-      money:
-        "당장 큰돈보다 미래 가능성이 보입니다. 장기적인 목표를 믿고 준비하세요.",
-      study: "목표를 다시 믿어도 좋습니다. 조금씩 나아지는 흐름이 생깁니다.",
-    },
-  },
-  {
-    name: "달",
-    keywords: "불안, 환상, 혼란",
-    img: "/img/tarotcards/major-18-moon.jpg",
-    meaning: {
-      love: "오해와 불안이 커질 수 있습니다. 상상으로 판단하지 말고 확인이 필요합니다.",
-      money:
-        "불확실한 거래나 소문에 흔들리지 마세요. 잘 모르는 돈 문제는 미루는 편이 낫습니다.",
-      study:
-        "막연한 불안이 집중을 흐립니다. 작은 범위부터 정리하면 혼란이 줄어듭니다.",
-    },
-  },
-  {
-    name: "태양",
-    keywords: "성공, 기쁨, 활력",
-    img: "/img/tarotcards/major-19-sun.jpg",
-    meaning: {
-      love: "밝고 솔직한 관계운입니다. 마음을 숨기기보다 긍정적으로 표현하면 좋습니다.",
-      money: "성과와 보상이 기대됩니다. 자신 있게 움직여도 좋은 흐름입니다.",
-      study:
-        "자신감이 붙고 결과가 잘 보입니다. 시험이나 발표에 좋은 카드입니다.",
-    },
-  },
-  {
-    name: "심판",
-    keywords: "부활, 평가, 결단",
-    img: "/img/tarotcards/major-20-judgement.jpg",
-    meaning: {
-      love: "과거의 인연이나 미뤄둔 대화가 다시 떠오를 수 있습니다. 결론을 내릴 때입니다.",
-      money:
-        "지난 선택의 결과를 확인하게 됩니다. 정산하고 다시 계획을 세우세요.",
-      study:
-        "복습과 재도전에 강합니다. 이전에 틀린 것을 다시 보면 성과가 납니다.",
-    },
-  },
-  {
-    name: "세계",
-    keywords: "완성, 성취, 통합",
-    img: "/img/tarotcards/major-21-world.jpg",
-    meaning: {
-      love: "관계가 안정되거나 한 단계 완성됩니다. 서로의 자리를 인정하는 흐름입니다.",
-      money:
-        "목표 달성이나 마무리 수익이 들어올 수 있습니다. 오래 준비한 일이 결실을 냅니다.",
-      study: "긴 과정의 결과가 나옵니다. 마무리 정리와 최종 점검에 좋습니다.",
-    },
-  },
-  {
-    name: "완드 에이스",
-    keywords: "열정, 시작, 의욕",
-    img: "/img/tarotcards/wands-01-ace.jpg",
-    meaning: {
-      love: "새로운 호감이 강하게 피어납니다. 먼저 다가갈 용기가 생기는 카드입니다.",
-      money:
-        "새 수입 아이디어나 부업 기회가 보입니다. 작게라도 시작해보면 좋습니다.",
-      study: "의욕이 올라 공부를 시작하기 좋습니다. 첫 단추를 빠르게 끼우세요.",
-    },
-  },
-  {
-    name: "완드 2",
-    keywords: "계획, 전망, 선택",
-    img: "/img/tarotcards/wands-02-two.jpg",
-    meaning: {
-      love: "관계의 다음 방향을 고민하게 됩니다. 지금 선택이 앞으로의 흐름을 정합니다.",
-      money:
-        "더 큰 계획을 세우는 시기입니다. 바로 움직이기보다 가능성을 비교하세요.",
-      study:
-        "진로와 목표를 넓게 봐야 합니다. 어떤 공부를 이어갈지 선택이 필요합니다.",
-    },
-  },
-  {
-    name: "완드 3",
-    keywords: "확장, 기다림, 진전",
-    img: "/img/tarotcards/wands-03-three.jpg",
-    meaning: {
-      love: "관계가 한 단계 넓어질 수 있습니다. 기다리던 연락이나 진전이 보입니다.",
-      money:
-        "기다리던 결과가 조금씩 돌아옵니다. 장기적인 시야로 돈을 봐야 합니다.",
-      study:
-        "공부한 것이 밖으로 연결됩니다. 발표, 지원, 시험 준비에 좋은 흐름입니다.",
-    },
-  },
-  {
-    name: "완드 4",
-    keywords: "축하, 안정, 휴식",
-    img: "/img/tarotcards/wands-04-four.jpg",
-    meaning: {
-      love: "편안하고 즐거운 만남에 좋습니다. 관계가 안정되고 기쁜 일이 생길 수 있습니다.",
-      money:
-        "작은 보상이나 안정적인 흐름이 있습니다. 무리하지 않고 즐겨도 괜찮습니다.",
-      study:
-        "중간 목표를 달성하고 잠시 쉬어가기 좋습니다. 성취감을 느껴보세요.",
-    },
-  },
-  {
-    name: "완드 5",
-    keywords: "경쟁, 갈등, 도전",
-    img: "/img/tarotcards/wands-05-five.jpg",
-    meaning: {
-      love: "의견 충돌이나 자존심 싸움이 생길 수 있습니다. 이기려 하기보다 조율이 필요합니다.",
-      money:
-        "경쟁이 심한 상황입니다. 성급히 뛰어들기보다 내 강점을 확인하세요.",
-      study:
-        "비교와 경쟁 때문에 흔들릴 수 있습니다. 다른 사람보다 내 진도에 집중하세요.",
-    },
-  },
-  {
-    name: "완드 6",
-    keywords: "승리, 인정, 자신감",
-    img: "/img/tarotcards/wands-06-six.jpg",
-    meaning: {
-      love: "자신감 있는 모습이 매력으로 보입니다. 호감 표현이 좋은 반응을 얻을 수 있습니다.",
-      money:
-        "성과를 인정받거나 보상을 받을 수 있습니다. 노력한 일이 돈으로 이어집니다.",
-      study:
-        "시험, 발표, 평가에서 좋은 흐름입니다. 자신 있게 결과를 보여주세요.",
-    },
-  },
-  {
-    name: "완드 7",
-    keywords: "방어, 고집, 버팀",
-    img: "/img/tarotcards/wands-07-seven.jpg",
-    meaning: {
-      love: "내 입장을 지켜야 하는 상황입니다. 다만 너무 방어적이면 거리감이 생깁니다.",
-      money: "불리해 보여도 버티면 지킬 수 있습니다. 쉽게 포기하지 마세요.",
-      study:
-        "어려운 문제 앞에서 버티는 힘이 필요합니다. 포기 직전 한 번 더 보면 풀립니다.",
-    },
-  },
-  {
-    name: "완드 8",
-    keywords: "속도, 연락, 전개",
-    img: "/img/tarotcards/wands-08-eight.jpg",
-    meaning: {
-      love: "연락이 빠르게 오가고 관계가 급진전될 수 있습니다. 타이밍을 놓치지 마세요.",
-      money:
-        "돈의 흐름이 빨라집니다. 빠른 결정이 필요하지만 확인은 꼭 해야 합니다.",
-      study:
-        "짧은 시간에 진도를 많이 뺄 수 있습니다. 몰아서 처리하기 좋은 날입니다.",
-    },
-  },
-  {
-    name: "완드 9",
-    keywords: "경계, 피로, 지속",
-    img: "/img/tarotcards/wands-09-nine.jpg",
-    meaning: {
-      love: "상처 때문에 마음을 쉽게 열지 못할 수 있습니다. 천천히 신뢰를 회복하세요.",
-      money: "지출을 막고 방어해야 하는 시기입니다. 마지막 안전선을 지키세요.",
-      study:
-        "지쳤지만 조금만 더 버티면 됩니다. 마무리 직전의 집중력이 필요합니다.",
-    },
-  },
-  {
-    name: "완드 10",
-    keywords: "부담, 책임, 과로",
-    img: "/img/tarotcards/wands-10-ten.jpg",
-    meaning: {
-      love: "관계의 부담을 혼자 짊어질 수 있습니다. 솔직히 나누고 도움을 요청하세요.",
-      money:
-        "책임과 지출이 커질 수 있습니다. 줄일 수 있는 부담부터 정리해야 합니다.",
-      study:
-        "할 일이 너무 많아 지칠 수 있습니다. 우선순위를 정하고 하나씩 처리하세요.",
-    },
-  },
-  {
-    name: "완드 페이지",
-    keywords: "호기심, 소식, 시도",
-    img: "/img/tarotcards/wands-11-page.jpg",
-    meaning: {
-      love: "가볍고 풋풋한 관심이 생깁니다. 메시지나 작은 표현이 시작점이 됩니다.",
-      money:
-        "작은 부업이나 새 시도를 탐색하기 좋습니다. 아직은 배우는 단계입니다.",
-      study:
-        "새로운 과목에 호기심이 생깁니다. 흥미를 붙이는 것이 가장 중요합니다.",
-    },
-  },
-  {
-    name: "완드 나이트",
-    keywords: "돌진, 열정, 충동",
-    img: "/img/tarotcards/wands-12-knight.jpg",
-    meaning: {
-      love: "뜨겁게 다가가지만 성급할 수 있습니다. 속도를 조금 조절하면 더 좋습니다.",
-      money:
-        "빠른 실행은 장점이지만 무리한 베팅은 위험합니다. 충동을 조심하세요.",
-      study:
-        "몰아치는 집중력이 있습니다. 단기 목표를 잡고 빠르게 밀어붙이세요.",
-    },
-  },
-  {
-    name: "완드 퀸",
-    keywords: "매력, 자신감, 주도",
-    img: "/img/tarotcards/wands-13-queen.jpg",
-    meaning: {
-      love: "밝고 당당한 매력이 돋보입니다. 끌려가기보다 자연스럽게 주도하세요.",
-      money:
-        "자신의 능력을 드러내면 이득이 됩니다. 협상이나 홍보에도 좋습니다.",
-      study: "자기주도 학습에 강합니다. 스스로 계획을 세우면 성과가 큽니다.",
-    },
-  },
-  {
-    name: "완드 킹",
-    keywords: "리더십, 비전, 결단",
-    img: "/img/tarotcards/wands-14-king.jpg",
-    meaning: {
-      love: "관계를 이끄는 힘이 있습니다. 확실한 태도와 책임감이 매력으로 보입니다.",
-      money: "크게 보고 결단하면 기회가 됩니다. 장기 전략이 중요합니다.",
-      study: "목표를 직접 정하고 이끌어야 합니다. 리더처럼 계획을 관리하세요.",
-    },
-  },
-  {
-    name: "컵 에이스",
-    keywords: "감정, 사랑, 시작",
-    img: "/img/tarotcards/cups-01-ace.jpg",
-    meaning: {
-      love: "새로운 감정이 시작됩니다. 고백, 설렘, 따뜻한 만남에 좋은 카드입니다.",
-      money:
-        "기분 좋은 제안이나 만족스러운 소비가 있습니다. 감정적 지출은 조심하세요.",
-      study: "좋아하는 분야에 몰입이 생깁니다. 흥미가 공부의 출발점이 됩니다.",
-    },
-  },
-  {
-    name: "컵 2",
-    keywords: "교감, 화합, 만남",
-    img: "/img/tarotcards/cups-02-two.jpg",
-    meaning: {
-      love: "서로 마음이 잘 통합니다. 만남, 화해, 고백에 매우 좋은 흐름입니다.",
-      money:
-        "협업이나 1대1 거래가 유리합니다. 신뢰할 수 있는 사람과 함께하세요.",
-      study:
-        "스터디 파트너와 공부하면 효과가 큽니다. 서로 설명하며 배우기 좋습니다.",
-    },
-  },
-  {
-    name: "컵 3",
-    keywords: "기쁨, 모임, 우정",
-    img: "/img/tarotcards/cups-03-three.jpg",
-    meaning: {
-      love: "친구 같은 즐거운 만남이 있습니다. 소개팅이나 모임에서 인연이 생길 수 있습니다.",
-      money:
-        "모임 지출이 늘 수 있지만 즐거운 흐름입니다. 사람을 통한 기회도 있습니다.",
-      study: "팀 과제와 그룹 공부에 좋습니다. 함께하면 분위기가 살아납니다.",
-    },
-  },
-  {
-    name: "컵 4",
-    keywords: "권태, 무관심, 고민",
-    img: "/img/tarotcards/cups-04-four.jpg",
-    meaning: {
-      love: "권태나 무관심 때문에 기회를 놓칠 수 있습니다. 마음을 닫고 있지 않은지 보세요.",
-      money:
-        "좋은 제안도 시큰둥하게 보일 수 있습니다. 기회를 다시 검토해보세요.",
-      study:
-        "집중이 떨어지고 지루함이 큽니다. 공부 장소나 방식을 바꾸면 도움이 됩니다.",
-    },
-  },
-  {
-    name: "컵 5",
-    keywords: "실망, 후회, 상실",
-    img: "/img/tarotcards/cups-05-five.jpg",
-    meaning: {
-      love: "실망한 마음이 커질 수 있습니다. 잃은 것만 보지 말고 남은 가능성도 봐야 합니다.",
-      money:
-        "손실이나 아쉬운 지출이 있을 수 있습니다. 그래도 회복할 방법은 남아 있습니다.",
-      study:
-        "틀린 문제나 실패에 오래 머물 수 있습니다. 후회보다 복구가 중요합니다.",
-    },
-  },
-  {
-    name: "컵 6",
-    keywords: "추억, 과거, 순수",
-    img: "/img/tarotcards/cups-06-six.jpg",
-    meaning: {
-      love: "과거 인연이나 오래된 감정이 떠오릅니다. 순수한 마음으로 다시 볼 일이 생깁니다.",
-      money:
-        "예전 방식이나 익숙한 선택에서 힌트를 얻습니다. 과거 경험을 참고하세요.",
-      study:
-        "기초 복습이 큰 도움이 됩니다. 예전에 배운 내용을 다시 보면 정리가 됩니다.",
-    },
-  },
-  {
-    name: "컵 7",
-    keywords: "환상, 선택지, 유혹",
-    img: "/img/tarotcards/cups-07-seven.jpg",
-    meaning: {
-      love: "상상과 현실을 구분해야 합니다. 상대를 이상화하면 판단이 흐려집니다.",
-      money:
-        "선택지가 많아 보이지만 실속은 다를 수 있습니다. 허황된 제안을 조심하세요.",
-      study:
-        "하고 싶은 것이 많아 집중이 흩어집니다. 하나를 정해서 끝내야 합니다.",
-    },
-  },
-  {
-    name: "컵 8",
-    keywords: "이별, 포기, 탐색",
-    img: "/img/tarotcards/cups-08-eight.jpg",
-    meaning: {
-      love: "마음이 떠난 관계는 정리가 필요할 수 있습니다. 더 나은 방향을 찾아야 합니다.",
-      money:
-        "만족 없는 일이나 소비를 내려놓을 때입니다. 손해보다 방향 전환이 중요합니다.",
-      study:
-        "맞지 않는 공부법을 버리고 새 방식을 찾아야 합니다. 이동이 필요한 카드입니다.",
-    },
-  },
-  {
-    name: "컵 9",
-    keywords: "만족, 소원, 즐거움",
-    img: "/img/tarotcards/cups-09-nine.jpg",
-    meaning: {
-      love: "원하던 감정적 만족을 느낄 수 있습니다. 기분 좋은 만남과 호감이 있습니다.",
-      money:
-        "작은 소원 성취나 만족스러운 보상이 있습니다. 즐거운 소비도 가능합니다.",
-      study:
-        "작은 성취감이 자신감을 줍니다. 내가 잘하고 있다는 느낌을 받을 수 있습니다.",
-    },
-  },
-  {
-    name: "컵 10",
-    keywords: "행복, 가족, 완성",
-    img: "/img/tarotcards/cups-10-ten.jpg",
-    meaning: {
-      love: "안정적이고 행복한 관계운입니다. 가족 같은 편안함과 깊은 만족이 있습니다.",
-      money:
-        "생활 안정과 만족스러운 흐름이 있습니다. 가족이나 공동체와 관련된 돈도 좋습니다.",
-      study:
-        "주변의 응원을 받으며 공부하기 좋습니다. 안정된 환경이 성과를 돕습니다.",
-    },
-  },
-  {
-    name: "컵 페이지",
-    keywords: "감수성, 메시지, 호감",
-    img: "/img/tarotcards/cups-11-page.jpg",
-    meaning: {
-      love: "귀여운 호감이나 메시지가 올 수 있습니다. 감정 표현이 서툴러도 진심이 있습니다.",
-      money: "작은 제안이나 아이디어가 들어옵니다. 현실성 확인은 필요합니다.",
-      study:
-        "상상력과 감수성이 필요한 공부에 좋습니다. 흥미를 살려 접근하세요.",
-    },
-  },
-  {
-    name: "컵 나이트",
-    keywords: "고백, 낭만, 제안",
-    img: "/img/tarotcards/cups-12-knight.jpg",
-    meaning: {
-      love: "로맨틱한 제안이나 고백 운이 있습니다. 다정한 표현이 관계를 움직입니다.",
-      money:
-        "감정에 끌린 소비가 생길 수 있습니다. 좋아 보이는 제안도 계산해보세요.",
-      study:
-        "흥미가 생기는 주제를 따라가면 잘 됩니다. 감성적인 동기가 도움이 됩니다.",
-    },
-  },
-  {
-    name: "컵 퀸",
-    keywords: "공감, 배려, 감정",
-    img: "/img/tarotcards/cups-13-queen.jpg",
-    meaning: {
-      love: "깊은 공감과 배려가 관계를 좋게 만듭니다. 상대의 마음을 잘 읽을 수 있습니다.",
-      money:
-        "감정적 소비를 조절해야 합니다. 필요한 사람을 돕되 내 기준도 지키세요.",
-      study:
-        "이해력과 몰입이 좋아집니다. 감정 기복만 관리하면 공부가 잘 됩니다.",
-    },
-  },
-  {
-    name: "컵 킹",
-    keywords: "성숙, 안정, 감정조절",
-    img: "/img/tarotcards/cups-14-king.jpg",
-    meaning: {
-      love: "성숙하고 안정적인 감정 표현이 필요합니다. 감정을 다스리면 관계가 깊어집니다.",
-      money:
-        "차분한 판단이 돈을 지켜줍니다. 주변 상황에 흔들리지 않는 것이 중요합니다.",
-      study:
-        "감정 기복을 잡으면 꾸준히 나아갑니다. 안정적인 페이스를 유지하세요.",
-    },
-  },
-  {
-    name: "소드 에이스",
-    keywords: "진실, 판단, 명확함",
-    img: "/img/tarotcards/swords-01-ace.jpg",
-    meaning: {
-      love: "솔직한 대화가 필요합니다. 애매한 감정을 명확히 말하면 관계가 정리됩니다.",
-      money:
-        "빠르고 정확한 판단이 필요합니다. 숫자와 사실을 기준으로 결정하세요.",
-      study: "핵심 개념을 날카롭게 잡기 좋습니다. 정리와 요약이 잘 됩니다.",
-    },
-  },
-  {
-    name: "소드 2",
-    keywords: "갈등, 보류, 침묵",
-    img: "/img/tarotcards/swords-02-two.jpg",
-    meaning: {
-      love: "마음을 닫고 결정을 미루기 쉽습니다. 대화를 피하면 답도 늦어집니다.",
-      money:
-        "두 선택 사이에서 망설일 수 있습니다. 결정 전 정보를 더 확인하세요.",
-      study:
-        "무엇부터 해야 할지 정하지 못합니다. 우선순위 하나를 고르는 것이 시작입니다.",
-    },
-  },
-  {
-    name: "소드 3",
-    keywords: "상처, 이별, 아픔",
-    img: "/img/tarotcards/swords-03-three.jpg",
-    meaning: {
-      love: "상처 주는 말이나 실망이 생길 수 있습니다. 아픈 진실을 피하지 말아야 합니다.",
-      money:
-        "손실이나 아쉬운 소식이 있을 수 있습니다. 감정적으로 대응하면 손해가 커집니다.",
-      study:
-        "틀린 부분을 인정해야 다음으로 넘어갑니다. 실패 분석이 필요합니다.",
-    },
-  },
-  {
-    name: "소드 4",
-    keywords: "휴식, 회복, 정지",
-    img: "/img/tarotcards/swords-04-four.jpg",
-    meaning: {
-      love: "잠시 거리를 두고 마음을 회복해야 합니다. 쉬어야 다시 볼 수 있습니다.",
-      money:
-        "큰 움직임보다 재정비가 좋습니다. 지출을 멈추고 상황을 점검하세요.",
-      study:
-        "휴식이 필요한 카드입니다. 잠깐 멈춘 뒤 다시 시작하면 효율이 오릅니다.",
-    },
-  },
-  {
-    name: "소드 5",
-    keywords: "패배, 다툼, 이기심",
-    img: "/img/tarotcards/swords-05-five.jpg",
-    meaning: {
-      love: "이기려는 말싸움은 관계를 해칩니다. 이겨도 마음은 멀어질 수 있습니다.",
-      money:
-        "이득을 봐도 뒤끝이 남을 수 있습니다. 무리한 경쟁과 계산을 조심하세요.",
-      study:
-        "경쟁심이 독이 될 수 있습니다. 남을 이기기보다 내 약점을 보완하세요.",
-    },
-  },
-  {
-    name: "소드 6",
-    keywords: "이동, 회복, 전환",
-    img: "/img/tarotcards/swords-06-six.jpg",
-    meaning: {
-      love: "힘든 흐름에서 조금씩 벗어납니다. 관계가 더 나은 방향으로 이동합니다.",
-      money:
-        "불안정한 상태가 서서히 안정됩니다. 환경을 바꾸면 돈 흐름도 나아집니다.",
-      study:
-        "공부 환경을 바꾸면 도움이 됩니다. 막힌 상태에서 벗어나는 카드입니다.",
-    },
-  },
-  {
-    name: "소드 7",
-    keywords: "속임수, 전략, 회피",
-    img: "/img/tarotcards/swords-07-seven.jpg",
-    meaning: {
-      love: "숨기는 말이나 애매한 태도를 조심해야 합니다. 솔직하지 않으면 문제가 됩니다.",
-      money: "편법이나 꼼수는 위험합니다. 계약과 조건을 꼼꼼히 확인하세요.",
-      study:
-        "요령만 찾다가 기본을 놓칠 수 있습니다. 정직하게 실력을 쌓아야 합니다.",
-    },
-  },
-  {
-    name: "소드 8",
-    keywords: "제한, 두려움, 갇힘",
-    img: "/img/tarotcards/swords-08-eight.jpg",
-    meaning: {
-      love: "스스로 만든 불안에 갇힐 수 있습니다. 생각보다 선택지는 남아 있습니다.",
-      money:
-        "방법이 없어 보이지만 완전히 막힌 것은 아닙니다. 작은 해결책부터 찾으세요.",
-      study:
-        "못한다는 생각이 공부를 막습니다. 쉬운 문제부터 풀며 자신감을 회복하세요.",
-    },
-  },
-  {
-    name: "소드 9",
-    keywords: "걱정, 불안, 악몽",
-    img: "/img/tarotcards/swords-09-nine.jpg",
-    meaning: {
-      love: "걱정이 실제보다 커질 수 있습니다. 혼자 상상하지 말고 확인이 필요합니다.",
-      money:
-        "돈 걱정이 판단을 흐릴 수 있습니다. 숫자로 정리하면 불안이 줄어듭니다.",
-      study: "불안과 수면 부족이 문제입니다. 컨디션을 회복해야 공부도 됩니다.",
-    },
-  },
-  {
-    name: "소드 10",
-    keywords: "끝, 절망, 내려놓음",
-    img: "/img/tarotcards/swords-10-ten.jpg",
-    meaning: {
-      love: "힘든 국면이 끝에 가까워졌습니다. 붙잡기보다 정리하고 회복해야 합니다.",
-      money: "최악은 지나가고 있습니다. 손실을 인정하고 복구 계획을 세우세요.",
-      study:
-        "실패를 끝으로 보고 다시 시작해야 합니다. 무너진 계획을 새로 짜세요.",
-    },
-  },
-  {
-    name: "소드 페이지",
-    keywords: "관찰, 정보, 질문",
-    img: "/img/tarotcards/swords-11-page.jpg",
-    meaning: {
-      love: "상대의 행동을 관찰하게 됩니다. 섣부른 판단보다 질문과 확인이 필요합니다.",
-      money: "정보 수집이 먼저입니다. 돈을 움직이기 전에 조건을 더 알아보세요.",
-      study:
-        "질문하고 찾아보는 태도가 좋습니다. 궁금한 것을 그냥 넘기지 마세요.",
-    },
-  },
-  {
-    name: "소드 나이트",
-    keywords: "돌파, 논쟁, 속도",
-    img: "/img/tarotcards/swords-12-knight.jpg",
-    meaning: {
-      love: "말이 빨라지고 상대를 몰아붙일 수 있습니다. 속도보다 배려가 필요합니다.",
-      money:
-        "빠른 판단은 좋지만 공격적인 선택은 조심하세요. 급하게 움직이면 실수합니다.",
-      study:
-        "단숨에 파고드는 집중력이 있습니다. 어려운 문제를 돌파하기 좋습니다.",
-    },
-  },
-  {
-    name: "소드 퀸",
-    keywords: "냉정, 분석, 독립",
-    img: "/img/tarotcards/swords-13-queen.jpg",
-    meaning: {
-      love: "감정에 휘둘리지 않는 선 긋기가 필요합니다. 냉정하지만 솔직한 태도가 좋습니다.",
-      money: "분석력이 돈을 지켜줍니다. 필요 없는 지출을 정확히 잘라내세요.",
-      study: "논리와 정리가 강해집니다. 개념을 구조화하면 성과가 납니다.",
-    },
-  },
-  {
-    name: "소드 킹",
-    keywords: "판단, 권위, 논리",
-    img: "/img/tarotcards/swords-14-king.jpg",
-    meaning: {
-      love: "명확한 기준과 책임 있는 대화가 중요합니다. 감정보다 원칙을 세우세요.",
-      money:
-        "전략적으로 판단하면 좋은 결정을 합니다. 큰돈일수록 계획이 필요합니다.",
-      study:
-        "계획, 분석, 시험 전략에 강합니다. 머리로 정리하고 체계적으로 움직이세요.",
-    },
-  },
-  {
-    name: "펜타클 에이스",
-    keywords: "기회, 돈, 현실",
-    img: "/img/tarotcards/pentacles-01-ace.jpg",
-    meaning: {
-      love: "현실적으로 안정된 인연이 들어올 수 있습니다. 오래 갈 가능성을 봐야 합니다.",
-      money:
-        "새로운 수입, 선물, 일자리 기회가 있습니다. 현실적인 이득이 보입니다.",
-      study:
-        "기초를 다지기 좋은 시작입니다. 작은 성과가 장기 실력으로 이어집니다.",
-    },
-  },
-  {
-    name: "펜타클 2",
-    keywords: "균형, 조절, 변화",
-    img: "/img/tarotcards/pentacles-02-two.jpg",
-    meaning: {
-      love: "관계와 일상의 균형을 맞춰야 합니다. 한쪽으로 치우치면 피곤해집니다.",
-      money: "수입과 지출을 유연하게 조절해야 합니다. 우선순위가 중요합니다.",
-      study:
-        "여러 과목을 동시에 관리해야 합니다. 시간 배분을 잘하면 버틸 수 있습니다.",
-    },
-  },
-  {
-    name: "펜타클 3",
-    keywords: "협업, 기술, 평가",
-    img: "/img/tarotcards/pentacles-03-three.jpg",
-    meaning: {
-      love: "함께 맞춰가며 관계를 쌓는 흐름입니다. 서로의 노력이 중요합니다.",
-      money:
-        "협업과 실력이 수입으로 이어집니다. 평가받는 자리에서 좋은 결과가 있습니다.",
-      study:
-        "피드백을 받으면 실력이 빨리 늡니다. 혼자보다 함께 배우는 것이 좋습니다.",
-    },
-  },
-  {
-    name: "펜타클 4",
-    keywords: "소유, 절약, 집착",
-    img: "/img/tarotcards/pentacles-04-four.jpg",
-    meaning: {
-      love: "상대를 소유하려 하거나 마음을 너무 닫을 수 있습니다. 여유가 필요합니다.",
-      money:
-        "아끼는 힘은 좋지만 지나친 집착은 흐름을 막습니다. 필요한 투자도 봐야 합니다.",
-      study:
-        "아는 방식만 고집할 수 있습니다. 새로운 풀이법을 받아들이면 좋아집니다.",
-    },
-  },
-  {
-    name: "펜타클 5",
-    keywords: "부족, 고립, 어려움",
-    img: "/img/tarotcards/pentacles-05-five.jpg",
-    meaning: {
-      love: "외로움이나 부족함을 느낄 수 있습니다. 혼자 견디기보다 도움을 요청하세요.",
-      money:
-        "금전 압박이 있을 수 있습니다. 지출을 줄이고 현실적인 지원을 찾아야 합니다.",
-      study: "혼자 끙끙대면 더 어려워집니다. 질문하거나 도움을 받아야 합니다.",
-    },
-  },
-  {
-    name: "펜타클 6",
-    keywords: "나눔, 지원, 균형",
-    img: "/img/tarotcards/pentacles-06-six.jpg",
-    meaning: {
-      love: "주고받는 균형이 중요합니다. 한쪽만 베푸는 관계는 조정이 필요합니다.",
-      money:
-        "도움, 지원, 보너스 같은 흐름이 있습니다. 나눔과 균형이 돈운을 좋게 합니다.",
-      study:
-        "가르치거나 배우며 함께 성장합니다. 도움을 주고받는 공부가 좋습니다.",
-    },
-  },
-  {
-    name: "펜타클 7",
-    keywords: "기다림, 투자, 성장",
-    img: "/img/tarotcards/pentacles-07-seven.jpg",
-    meaning: {
-      love: "관계가 천천히 자랍니다. 당장 답을 요구하기보다 시간을 두고 보세요.",
-      money:
-        "투자한 만큼 결과가 늦게 나옵니다. 조급해하지 말고 과정을 점검하세요.",
-      study:
-        "바로 성적이 오르지 않아도 누적되고 있습니다. 꾸준함을 믿어야 합니다.",
-    },
-  },
-  {
-    name: "펜타클 8",
-    keywords: "노력, 반복, 숙련",
-    img: "/img/tarotcards/pentacles-08-eight.jpg",
-    meaning: {
-      love: "성실한 태도가 신뢰를 만듭니다. 화려함보다 꾸준함이 관계를 키웁니다.",
-      money:
-        "일한 만큼 버는 정직한 흐름입니다. 기술을 갈고닦으면 수입이 늘어납니다.",
-      study:
-        "반복 연습과 문제풀이에 가장 좋습니다. 꾸준히 쌓으면 확실히 늡니다.",
-    },
-  },
-  {
-    name: "펜타클 9",
-    keywords: "풍요, 독립, 여유",
-    img: "/img/tarotcards/pentacles-09-nine.jpg",
-    meaning: {
-      love: "혼자서도 충분히 빛나는 상태입니다. 자존감이 올라가 매력이 커집니다.",
-      money:
-        "노력의 보상과 여유가 생길 수 있습니다. 독립적인 수입 관리에 좋습니다.",
-      study: "자기관리와 독학 능력이 빛납니다. 혼자 계획을 지켜 성과를 냅니다.",
-    },
-  },
-  {
-    name: "펜타클 10",
-    keywords: "자산, 가족, 안정",
-    img: "/img/tarotcards/pentacles-10-ten.jpg",
-    meaning: {
-      love: "장기적으로 안정된 관계를 기대할 수 있습니다. 가족이나 미래 이야기에 좋습니다.",
-      money:
-        "자산, 저축, 장기 재정에 좋은 카드입니다. 안정된 기반을 만들 수 있습니다.",
-      study:
-        "긴 목표를 완성하는 힘이 있습니다. 꾸준히 해온 공부가 결실을 맺습니다.",
-    },
-  },
-  {
-    name: "펜타클 페이지",
-    keywords: "공부, 기초, 가능성",
-    img: "/img/tarotcards/pentacles-11-page.jpg",
-    meaning: {
-      love: "천천히 알아가는 현실적인 호감입니다. 작지만 진지한 관심이 있습니다.",
-      money: "돈 공부나 저축을 시작하기 좋습니다. 작은 금액부터 관리하세요.",
-      study:
-        "기초 개념을 배우기에 좋습니다. 성실하게 시작하면 가능성이 큽니다.",
-    },
-  },
-  {
-    name: "펜타클 나이트",
-    keywords: "성실, 꾸준함, 책임",
-    img: "/img/tarotcards/pentacles-12-knight.jpg",
-    meaning: {
-      love: "느리지만 믿을 수 있는 관계입니다. 성실한 태도가 진심을 보여줍니다.",
-      money:
-        "꾸준한 관리가 가장 큰 이득입니다. 빠른 돈보다 안정된 돈이 맞습니다.",
-      study:
-        "매일 반복하는 루틴이 성과를 만듭니다. 느려도 멈추지 않는 것이 중요합니다.",
-    },
-  },
-  {
-    name: "펜타클 퀸",
-    keywords: "돌봄, 안정, 실속",
-    img: "/img/tarotcards/pentacles-13-queen.jpg",
-    meaning: {
-      love: "편안하고 돌보는 관계운입니다. 상대에게 안정감을 줄 수 있습니다.",
-      money:
-        "생활 재정과 실속 관리에 강합니다. 현실적인 소비가 돈을 지켜줍니다.",
-      study:
-        "안정된 환경에서 공부가 잘 됩니다. 몸과 마음을 챙기면 집중이 좋아집니다.",
-    },
-  },
-  {
-    name: "펜타클 킹",
-    keywords: "성공, 재산, 현실감",
-    img: "/img/tarotcards/pentacles-14-king.jpg",
-    meaning: {
-      love: "책임감 있고 안정적인 관계를 뜻합니다. 현실적인 미래를 생각하기 좋습니다.",
-      money:
-        "재정 안정과 큰 성과를 기대할 수 있습니다. 실속 있는 선택이 돈을 키웁니다.",
-      study:
-        "현실적인 목표를 세우면 확실히 이룹니다. 결과 중심의 공부 전략이 좋습니다.",
-    },
+const categoryFocus: Record<Category, string> = {
+  love: "마음의 온도, 관계의 균형, 상대와 나 사이의 거리",
+  money: "현금 흐름, 선택의 손익, 지켜야 할 기준",
+  study: "집중력, 학습 루틴, 결과를 만드는 반복",
+  career: "역할, 방향성, 기회를 잡는 실행력",
+};
+
+const categoryAdvice: Record<Category, string[]> = {
+  love: [
+    "상대의 반응을 맞히려 하기보다 내 감정과 원하는 관계 방식을 먼저 정리하세요.",
+    "좋은 흐름일수록 표현은 단순하게, 불안한 흐름일수록 확인은 부드럽게 하는 편이 좋습니다.",
+    "관계의 속도를 무리하게 당기지 말고 대화의 질을 높이는 쪽이 유리합니다.",
+  ],
+  money: [
+    "큰 결정보다 작은 지출 구조를 먼저 정리하면 흐름이 빨리 안정됩니다.",
+    "수익 가능성만 보지 말고 손실이 났을 때 감당 가능한 범위를 먼저 정하세요.",
+    "계약, 가격, 조건처럼 숫자로 확인할 수 있는 것부터 점검하는 편이 좋습니다.",
+  ],
+  study: [
+    "지금은 의욕보다 반복 가능한 시간표가 더 중요합니다.",
+    "틀린 문제와 애매한 개념을 따로 모아 다시 보는 방식이 효율적입니다.",
+    "몰아치기보다 매일 같은 시간에 시작하는 루틴이 결과를 안정시킵니다.",
+  ],
+  career: [
+    "역할과 목표를 작게 쪼개면 지금 바로 움직일 수 있는 지점이 보입니다.",
+    "기회가 와도 준비된 자료나 포트폴리오가 없으면 지나갈 수 있으니 먼저 정리하세요.",
+    "평판, 협업, 일정 관리처럼 눈에 덜 띄는 기본기가 결과를 좌우합니다.",
+  ],
+};
+
+const toneCategoryReadings: Record<
+  Category,
+  Record<Tone, { upright: string[]; reversed: string[] }>
+> = {
+  love: {
+    bright: {
+      upright: [
+        "호감과 표현이 살아나는 흐름이라 먼저 부드럽게 다가가도 좋습니다.",
+        "상대와의 분위기가 가벼워지고, 관계를 긍정적으로 열 수 있는 신호가 있습니다.",
+      ],
+      reversed: [
+        "호감은 있지만 표현이 들뜨거나 엇갈릴 수 있어 속도 조절이 필요합니다.",
+        "좋은 감정이 있어도 기대가 앞서면 상대의 실제 반응을 놓칠 수 있습니다.",
+      ],
+    },
+    steady: {
+      upright: [
+        "관계가 천천히 안정되는 흐름이므로 신뢰를 쌓는 태도가 가장 중요합니다.",
+        "급한 고백이나 결론보다 꾸준한 배려가 관계의 밀도를 높입니다.",
+      ],
+      reversed: [
+        "안정감이 정체감으로 느껴질 수 있어 대화의 온도를 다시 맞춰야 합니다.",
+        "표면상 괜찮아 보여도 속마음이 닫힐 수 있으니 작은 불편함을 넘기지 마세요.",
+      ],
+    },
+    caution: {
+      upright: [
+        "오해, 집착, 방어심이 관계의 핵심 변수가 될 수 있습니다.",
+        "감정이 예민해진 상태라 말의 강도와 타이밍을 신중히 골라야 합니다.",
+      ],
+      reversed: [
+        "불안이 실제보다 커질 수 있어 확인되지 않은 추측은 멈추는 편이 좋습니다.",
+        "관계의 문제를 피하거나 덮으면 같은 장면이 반복될 가능성이 큽니다.",
+      ],
+    },
+    turning: {
+      upright: [
+        "관계의 국면이 바뀌며 고백, 정리, 재회, 거리 조절 같은 결정이 떠오릅니다.",
+        "지금 선택은 감정의 흐름뿐 아니라 앞으로의 관계 방식까지 바꿀 수 있습니다.",
+      ],
+      reversed: [
+        "변화가 필요하지만 미련이나 두려움 때문에 결론이 늦어질 수 있습니다.",
+        "관계가 바뀌는 중이라 섣불리 단정하기보다 신호를 며칠 더 관찰하세요.",
+      ],
+    },
+  },
+  money: {
+    bright: {
+      upright: [
+        "수입, 보상, 제안처럼 돈의 흐름을 키울 만한 기회가 보입니다.",
+        "작은 시도라도 실제 수익 구조로 이어질 가능성이 있습니다.",
+      ],
+      reversed: [
+        "기회는 있지만 기대 수익을 크게 잡으면 실망하거나 지출이 앞설 수 있습니다.",
+        "좋아 보이는 제안일수록 조건과 비용을 다시 확인해야 합니다.",
+      ],
+    },
+    steady: {
+      upright: [
+        "예산, 저축, 장기 계획처럼 안정적인 관리가 힘을 발휘합니다.",
+        "큰 한 방보다 꾸준히 쌓이는 흐름이 재정에 유리합니다.",
+      ],
+      reversed: [
+        "안전하게 가려다 필요한 투자까지 미루는 모습이 생길 수 있습니다.",
+        "지출을 줄이는 것만으로는 부족하니 돈이 묶인 곳도 함께 보세요.",
+      ],
+    },
+    caution: {
+      upright: [
+        "충동구매, 손실, 계약 실수처럼 빠져나가는 돈을 먼저 막아야 합니다.",
+        "감정적인 결제나 급한 투자는 이 카드 흐름에서 특히 불리합니다.",
+      ],
+      reversed: [
+        "손실을 인정하지 않으면 더 큰 비용으로 번질 수 있습니다.",
+        "이미 위험 신호를 봤다면 미루지 말고 바로 지출 구조를 정리하세요.",
+      ],
+    },
+    turning: {
+      upright: [
+        "수입원, 투자 방향, 소비 습관이 바뀌는 전환점에 있습니다.",
+        "낡은 재정 패턴을 끝내면 새로운 돈의 길이 열릴 수 있습니다.",
+      ],
+      reversed: [
+        "바꾸어야 할 것은 알지만 실제 실행이 늦어질 수 있습니다.",
+        "전환기에는 큰돈을 한 번에 움직이기보다 단계별로 옮기는 편이 낫습니다.",
+      ],
+    },
+  },
+  study: {
+    bright: {
+      upright: [
+        "이해력과 동기가 살아나며 공부가 생각보다 잘 붙는 흐름입니다.",
+        "새 과목, 새 루틴, 새 목표를 시작하기에 좋은 카드입니다.",
+      ],
+      reversed: [
+        "의욕은 있지만 집중이 분산될 수 있어 범위를 좁혀야 합니다.",
+        "기분에 따라 공부량이 흔들리면 성과가 들쑥날쑥해질 수 있습니다.",
+      ],
+    },
+    steady: {
+      upright: [
+        "반복, 오답 정리, 기본기 점검이 확실한 성과를 만듭니다.",
+        "느려 보여도 루틴을 지키면 점수가 안정적으로 올라갑니다.",
+      ],
+      reversed: [
+        "너무 익숙한 방식만 붙잡으면 약점이 그대로 남을 수 있습니다.",
+        "성실함은 있지만 효율이 떨어질 수 있으니 공부법을 한 번 점검하세요.",
+      ],
+    },
+    caution: {
+      upright: [
+        "불안, 비교, 미루기가 집중력을 흔들 수 있습니다.",
+        "막힌 개념을 방치하면 뒤 단원까지 영향을 줄 수 있습니다.",
+      ],
+      reversed: [
+        "실패에 대한 걱정이 실제 실력보다 크게 느껴질 수 있습니다.",
+        "공부를 피하고 싶은 마음이 강해질수록 작은 단위로 쪼개 시작해야 합니다.",
+      ],
+    },
+    turning: {
+      upright: [
+        "공부 방향이나 시험 전략을 바꾸면 흐름이 살아납니다.",
+        "지금은 예전 방식의 한계를 인정하고 새 계획으로 넘어갈 때입니다.",
+      ],
+      reversed: [
+        "전략을 바꾸어야 하는데 익숙한 방식에 머무를 수 있습니다.",
+        "계획 변경이 늦어지면 같은 실수가 반복될 가능성이 큽니다.",
+      ],
+    },
+  },
+  career: {
+    bright: {
+      upright: [
+        "새 제안, 좋은 평가, 프로젝트 기회가 들어올 수 있는 흐름입니다.",
+        "자신의 강점을 드러낼수록 일이 더 잘 풀립니다.",
+      ],
+      reversed: [
+        "기회는 있지만 준비가 부족하면 흐름을 온전히 잡기 어렵습니다.",
+        "자신감이 과하면 일정이나 디테일에서 빈틈이 생길 수 있습니다.",
+      ],
+    },
+    steady: {
+      upright: [
+        "역할, 책임, 프로세스를 정리하면 일의 신뢰도가 올라갑니다.",
+        "당장 화려하지 않아도 꾸준한 수행이 평판을 만듭니다.",
+      ],
+      reversed: [
+        "안정적인 일이 반복되며 성장감이 낮아질 수 있습니다.",
+        "책임을 혼자 떠안기보다 범위와 우선순위를 다시 정해야 합니다.",
+      ],
+    },
+    caution: {
+      upright: [
+        "일정 지연, 소통 오류, 무리한 약속을 조심해야 합니다.",
+        "겉으로 괜찮아 보여도 내부 구조의 약점이 드러날 수 있습니다.",
+      ],
+      reversed: [
+        "문제를 알고도 미루면 나중에 더 큰 수정 비용이 생깁니다.",
+        "불안 때문에 움직이지 못하기보다 작은 리스크부터 제거하세요.",
+      ],
+    },
+    turning: {
+      upright: [
+        "이직, 역할 변화, 방향 전환처럼 판이 바뀌는 흐름이 있습니다.",
+        "지금 선택은 앞으로의 커리어 포지션을 새로 정할 수 있습니다.",
+      ],
+      reversed: [
+        "변화 욕구는 강하지만 현실 조건 때문에 속도가 늦어질 수 있습니다.",
+        "바로 뛰기보다 자료, 일정, 사람을 정리한 뒤 움직이는 편이 좋습니다.",
+      ],
+    },
+  },
+};
+
+const suitCategoryReadings: Record<Suit, Record<Category, string>> = {
+  major: {
+    love: "메이저 카드는 관계의 분위기보다 삶의 큰 선택과 연결됩니다.",
+    money: "메이저 카드는 단기 수입보다 돈을 대하는 태도 자체를 묻습니다.",
+    study: "메이저 카드는 단원 하나보다 공부 방향과 목표 설정에 영향을 줍니다.",
+    career: "메이저 카드는 직무나 역할의 큰 방향 전환을 암시합니다.",
+  },
+  wands: {
+    love: "완드는 끌림과 행동력의 카드라 먼저 움직이는 태도가 중요합니다.",
+    money: "완드는 부업, 영업, 빠른 실행처럼 돈을 벌기 위한 추진력을 봅니다.",
+    study: "완드는 의욕과 단기 집중력에 강하지만 오래 유지하는 장치가 필요합니다.",
+    career: "완드는 프로젝트 시작, 발표, 주도권 같은 능동적인 장면에 강합니다.",
+  },
+  cups: {
+    love: "컵은 감정과 공감의 카드라 관계의 온도와 진심을 섬세하게 봐야 합니다.",
+    money: "컵은 기분 소비와 만족감을 보여주므로 감정적 지출을 점검해야 합니다.",
+    study: "컵은 컨디션과 흥미가 성과에 영향을 주는 흐름입니다.",
+    career: "컵은 협업, 분위기, 사람과의 신뢰가 일의 핵심 변수가 됩니다.",
+  },
+  swords: {
+    love: "소드는 말, 판단, 거리감의 카드라 대화 방식이 관계를 좌우합니다.",
+    money: "소드는 숫자, 계약, 정보 확인처럼 차가운 판단이 필요한 돈입니다.",
+    study: "소드는 개념 정리와 논리 싸움에 강하지만 불안을 키우기도 합니다.",
+    career: "소드는 기획, 분석, 문서, 커뮤니케이션에서 승부가 납니다.",
+  },
+  pentacles: {
+    love: "펜타클은 현실성과 지속성을 보므로 오래 갈 수 있는 구조가 중요합니다.",
+    money: "펜타클은 가장 현실적인 재물 카드라 수입, 저축, 자산 관리와 직접 연결됩니다.",
+    study: "펜타클은 반복 연습과 누적 성과를 보여줍니다.",
+    career: "펜타클은 실무 능력, 결과물, 보상처럼 눈에 보이는 성과를 뜻합니다.",
+  },
+};
+
+const spreadPositionReadings = [
+  {
+    upright: "현재 자리에서는 이 카드가 이미 드러난 문제의 중심입니다.",
+    reversed: "현재 자리의 역방향은 본인이 느끼는 불편함보다 원인이 더 안쪽에 있음을 말합니다.",
+  },
+  {
+    upright: "흐름 자리에서는 앞으로 이 에너지가 점점 커질 가능성이 높습니다.",
+    reversed: "흐름 자리의 역방향은 변화가 오더라도 지연, 우회, 재확인이 끼어들 수 있음을 뜻합니다.",
+  },
+  {
+    upright: "조언 자리에서는 이 카드의 장점을 의식적으로 선택해야 합니다.",
+    reversed: "조언 자리의 역방향은 이 카드의 그림자를 피하는 것이 곧 해법이라는 뜻입니다.",
   },
 ];
 
+const spreadSlots: SpreadSlot[] = [
+  {
+    title: "현재의 바탕",
+    subtitle: "지금 상황의 핵심 기류",
+  },
+  {
+    title: "흐름의 방향",
+    subtitle: "가까운 미래에 강해질 움직임",
+  },
+  {
+    title: "전문가 조언",
+    subtitle: "선택을 정리하는 실전 포인트",
+  },
+];
+
+const majorCards: TarotCard[] = [
+  ["major-00-fool", "바보", ["시작", "자유", "모험"], "bright", "새로운 가능성이 열리지만 아직 형태가 잡히지 않은 상태입니다."],
+  ["major-01-magician", "마법사", ["실행", "재능", "표현"], "bright", "이미 가진 도구를 꺼내 쓰면 흐름을 주도할 수 있습니다."],
+  ["major-02-high-priestess", "여사제", ["직감", "침묵", "내면"], "steady", "겉으로 드러난 말보다 감춰진 분위기와 패턴을 읽어야 합니다."],
+  ["major-03-empress", "여황제", ["풍요", "돌봄", "성장"], "bright", "자연스럽게 자라는 힘이 있으며 관계와 결과가 무르익습니다."],
+  ["major-04-emperor", "황제", ["질서", "책임", "기준"], "steady", "감정보다 구조를 세울 때 안정적인 결과가 만들어집니다."],
+  ["major-05-hierophant", "교황", ["전통", "조언", "신뢰"], "steady", "검증된 방식과 신뢰할 만한 조언이 길을 열어줍니다."],
+  ["major-06-lovers", "연인", ["선택", "끌림", "조화"], "bright", "중요한 선택 앞에서 마음과 현실의 균형을 맞춰야 합니다."],
+  ["major-07-chariot", "전차", ["추진", "승부", "목표"], "bright", "방향을 정하면 빠르게 밀고 나갈 수 있는 힘이 있습니다."],
+  ["major-08-strength", "힘", ["인내", "용기", "조절"], "steady", "세게 밀어붙이기보다 부드럽게 버티는 힘이 필요합니다."],
+  ["major-09-hermit", "은둔자", ["성찰", "탐구", "거리"], "steady", "혼자 점검하고 본질을 파악해야 다음 길이 선명해집니다."],
+  ["major-10-wheel-of-fortune", "운명의 수레바퀴", ["변화", "기회", "전환"], "turning", "흐름이 바뀌는 시점이며 타이밍을 놓치지 않는 감각이 중요합니다."],
+  ["major-11-justice", "정의", ["균형", "판단", "공정"], "steady", "정확한 기준과 사실 확인이 좋은 결론을 만듭니다."],
+  ["major-12-hanged-man", "매달린 사람", ["정지", "관점", "희생"], "caution", "서두르면 꼬이고, 관점을 바꿔야 해결책이 보입니다."],
+  ["major-13-death", "죽음", ["종료", "변화", "재시작"], "turning", "낡은 방식을 끝내야 새로운 국면이 시작됩니다."],
+  ["major-14-temperance", "절제", ["조화", "회복", "균형"], "steady", "극단을 피하고 속도를 조절하면 상황이 안정됩니다."],
+  ["major-15-devil", "악마", ["집착", "유혹", "속박"], "caution", "강한 욕망이나 반복되는 습관이 판단을 흐릴 수 있습니다."],
+  ["major-16-tower", "탑", ["충격", "붕괴", "각성"], "caution", "불안정한 구조가 드러나며 과감한 정리가 필요합니다."],
+  ["major-17-star", "별", ["희망", "치유", "가능성"], "bright", "회복과 희망의 신호가 있으며 긴 호흡으로 보면 좋습니다."],
+  ["major-18-moon", "달", ["불안", "환상", "모호함"], "caution", "정보가 불완전하므로 추측보다 확인이 우선입니다."],
+  ["major-19-sun", "태양", ["성공", "기쁨", "명확함"], "bright", "밝고 직접적인 에너지가 결과를 좋게 이끕니다."],
+  ["major-20-judgement", "심판", ["부름", "평가", "결단"], "turning", "미뤄둔 결정을 마주하고 다음 단계로 넘어갈 때입니다."],
+  ["major-21-world", "세계", ["완성", "성취", "통합"], "bright", "긴 과정이 마무리되거나 한 단계 높은 완성으로 이어집니다."],
+].map(([id, name, keywords, tone, core]) => ({
+  id: id as string,
+  name: name as string,
+  arcana: "Major Arcana",
+  suit: "major",
+  img: `/img/tarotcards/${id}.jpg`,
+  keywords: keywords as string[],
+  tone: tone as Tone,
+  core: core as string,
+}));
+
+const suitMeta: Record<Exclude<Suit, "major">, { ko: string; file: string; element: string; domain: string }> = {
+  wands: { ko: "완드", file: "wands", element: "불", domain: "의욕과 행동" },
+  cups: { ko: "컵", file: "cups", element: "물", domain: "감정과 관계" },
+  swords: { ko: "소드", file: "swords", element: "공기", domain: "생각과 판단" },
+  pentacles: { ko: "펜타클", file: "pentacles", element: "흙", domain: "현실과 성과" },
+};
+
+const minorRanks = [
+  ["01-ace", "에이스", ["시작", "씨앗", "기회"], "bright", "새로운 에너지가 생기는 출발점입니다."],
+  ["02-two", "2", ["균형", "선택", "조율"], "steady", "두 가지 흐름 사이에서 균형을 잡아야 합니다."],
+  ["03-three", "3", ["확장", "협력", "성장"], "bright", "작은 성과가 밖으로 확장되기 시작합니다."],
+  ["04-four", "4", ["안정", "기반", "휴식"], "steady", "기반을 다지고 안정감을 회복하는 흐름입니다."],
+  ["05-five", "5", ["갈등", "변수", "도전"], "caution", "마찰이 생기지만 약점을 찾는 계기가 됩니다."],
+  ["06-six", "6", ["회복", "인정", "교류"], "bright", "막혔던 흐름이 풀리고 도움이나 인정이 따릅니다."],
+  ["07-seven", "7", ["방어", "점검", "버팀"], "caution", "쉽게 물러서지 말고 기준을 지켜야 합니다."],
+  ["08-eight", "8", ["속도", "반복", "전개"], "bright", "움직임이 빨라지고 집중할수록 결과가 납니다."],
+  ["09-nine", "9", ["완성 직전", "경계", "집중"], "steady", "마지막 고비이므로 흐트러지지 않는 태도가 중요합니다."],
+  ["10-ten", "10", ["완성", "부담", "결실"], "turning", "한 주기가 끝나며 결실과 부담을 함께 정리합니다."],
+  ["11-page", "페이지", ["소식", "배움", "호기심"], "bright", "작은 소식이나 배움이 다음 흐름을 엽니다."],
+  ["12-knight", "기사", ["추진", "이동", "열정"], "turning", "움직임은 강하지만 속도 조절이 관건입니다."],
+  ["13-queen", "여왕", ["성숙", "수용", "관리"], "steady", "상황을 품고 조율하는 섬세한 관리가 필요합니다."],
+  ["14-king", "왕", ["책임", "통제", "성과"], "steady", "큰 그림을 보고 책임 있게 결론을 내릴 힘이 있습니다."],
+] as const;
+
+const minorCards: TarotCard[] = (Object.keys(suitMeta) as Exclude<Suit, "major">[]).flatMap((suit) =>
+  minorRanks.map(([fileRank, rankName, keywords, tone, core]) => {
+    const meta = suitMeta[suit];
+    return {
+      id: `${meta.file}-${fileRank}`,
+      name: `${meta.ko} ${rankName}`,
+      arcana: `${meta.ko} | ${meta.element}`,
+      suit,
+      img: `/img/tarotcards/${meta.file}-${fileRank}.jpg`,
+      keywords: [...keywords, meta.domain],
+      tone,
+      core: `${meta.domain}에서 ${core}`,
+    };
+  }),
+);
+
+const tarotCards: TarotCard[] = [...majorCards, ...minorCards];
+
+const toneLabels: Record<Tone, string> = {
+  bright: "긍정",
+  steady: "안정",
+  caution: "주의",
+  turning: "전환",
+};
+
+const cardBackStyle: React.CSSProperties = {
+  background:
+    "linear-gradient(135deg, #17131f 0%, #2a1f36 45%, #544032 100%)",
+  border: "1px solid rgba(244, 214, 150, 0.38)",
+  boxShadow: "inset 0 0 0 7px rgba(255,255,255,0.04), 0 16px 34px rgba(17, 12, 24, 0.28)",
+};
+
+function shuffleDeck(deck: TarotCard[]) {
+  return [...deck]
+    .map((card) => ({ card, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ card }) => card);
+}
+
+function drawCard(card: TarotCard): DrawnCard {
+  return {
+    ...card,
+    reversed: Math.random() > 0.72,
+  };
+}
+
+function pickByCard<T>(items: T[], card: DrawnCard, category: Category, index: number) {
+  const seed = `${card.id}-${category}-${index}-${card.reversed ? "r" : "u"}`;
+  const total = seed.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return items[total % items.length];
+}
+
+function getCategoryReading(card: DrawnCard, category: Category, index: number) {
+  const direction = card.reversed ? "reversed" : "upright";
+  const toneReading = pickByCard(
+    toneCategoryReadings[category][card.tone][direction],
+    card,
+    category,
+    index,
+  );
+  const positionReading = spreadPositionReadings[index][direction];
+  const suitReading = suitCategoryReadings[card.suit][category];
+  const polarity = card.reversed
+    ? "따라서 이 카드의 의미는 막힘, 과잉, 지연 중 하나로 나타날 수 있습니다."
+    : "따라서 이 카드의 의미는 비교적 자연스럽고 직접적으로 드러납니다.";
+
+  return `${positionReading} ${card.core} ${suitReading} ${categoryFocus[category]}를 기준으로 보면, ${toneReading} ${polarity}`;
+}
+
+function makeSummary(cards: DrawnCard[], category: Category) {
+  const cautionCount = cards.filter((card) => card.tone === "caution" || card.reversed).length;
+  const brightCount = cards.filter((card) => card.tone === "bright" && !card.reversed).length;
+  const majorCount = cards.filter((card) => card.suit === "major").length;
+
+  if (cautionCount >= 2) {
+    return `${categoryLabels[category]} 흐름은 성급한 결정보다 점검이 먼저입니다. 불안한 신호를 무시하지 말고, 확인 가능한 사실과 반복되는 패턴을 분리해서 보세요.`;
+  }
+
+  if (brightCount >= 2) {
+    return `${categoryLabels[category]} 흐름은 열려 있습니다. 좋은 카드가 많으니 생각만 정리하다가 늦어지기보다, 작게라도 먼저 움직이는 편이 운을 살립니다.`;
+  }
+
+  if (majorCount >= 2) {
+    return `${categoryLabels[category]} 문제는 단순한 하루 운세보다 큰 방향성과 관련되어 있습니다. 지금 선택은 이후 흐름을 바꿀 수 있으니 기준을 분명히 잡으세요.`;
+  }
+
+  return `${categoryLabels[category]} 흐름은 무난하지만 자동으로 풀리지는 않습니다. 카드들이 말하는 강점과 주의점을 현실적인 행동으로 바꾸면 결과가 좋아집니다.`;
+}
+
+function makeCombinationInsights(cards: DrawnCard[], category: Category) {
+  const insights: string[] = [];
+  const majorCount = cards.filter((card) => card.suit === "major").length;
+  const reversedCount = cards.filter((card) => card.reversed).length;
+  const suitCounts = cards.reduce<Record<Suit, number>>(
+    (counts, card) => ({ ...counts, [card.suit]: counts[card.suit] + 1 }),
+    { major: 0, wands: 0, cups: 0, swords: 0, pentacles: 0 },
+  );
+  const toneCounts = cards.reduce<Record<Tone, number>>(
+    (counts, card) => ({ ...counts, [card.tone]: counts[card.tone] + 1 }),
+    { bright: 0, steady: 0, caution: 0, turning: 0 },
+  );
+
+  if (majorCount >= 2) {
+    insights.push("메이저 카드가 2장 이상이라 단순한 기분 운세보다 큰 흐름의 전환으로 읽습니다.");
+  }
+
+  if (reversedCount >= 2) {
+    insights.push("역방향이 많아서 외부 문제보다 내 안의 망설임, 지연, 회피를 먼저 다루는 편이 좋습니다.");
+  }
+
+  if (suitCounts.cups >= 2) {
+    insights.push(`${categoryLabels[category]}에서 감정과 인간관계가 핵심 변수로 강하게 작용합니다.`);
+  }
+
+  if (suitCounts.swords >= 2) {
+    insights.push("소드가 많아 말, 판단, 정보 확인이 결과를 크게 좌우합니다.");
+  }
+
+  if (suitCounts.pentacles >= 2) {
+    insights.push("펜타클이 많아 현실적인 조건, 시간, 돈, 결과물이 핵심입니다.");
+  }
+
+  if (suitCounts.wands >= 2) {
+    insights.push("완드가 많아 망설이는 순간보다 직접 움직이는 순간에 흐름이 살아납니다.");
+  }
+
+  if (toneCounts.caution >= 2) {
+    insights.push("주의 카드가 많으므로 지금은 확장보다 정리, 확인, 손실 방지가 우선입니다.");
+  }
+
+  if (toneCounts.bright >= 2) {
+    insights.push("긍정 카드가 많아 운은 열려 있습니다. 다만 기회를 현실 행동으로 옮겨야 체감됩니다.");
+  }
+
+  if (toneCounts.turning >= 2) {
+    insights.push("전환 카드가 많아 오래 끌던 방식을 바꾸는 것이 이번 리딩의 핵심입니다.");
+  }
+
+  if (insights.length === 0) {
+    insights.push("세 카드의 성격이 고르게 섞여 있어 한 가지 답보다 균형 잡힌 선택이 중요합니다.");
+  }
+
+  return insights.slice(0, 3);
+}
+
 const Tratot_no_ai: React.FC = () => {
-  const mode = import.meta.env.MODE;
-  const [categories] = useState<Category[]>(["love", "money", "study"]);
-  const [tarotCards] = useState<TarotCard[]>(initialTarotCards);
   const [selectedCategory, setSelectedCategory] = useState<Category>("love");
-  const [selectedCard, setSelectedCard] = useState<TarotCard | null>(null);
+  const [deck, setDeck] = useState<TarotCard[]>(() => shuffleDeck(tarotCards));
+  const [selectedCards, setSelectedCards] = useState<DrawnCard[]>([]);
+  const [isReadingOpen, setIsReadingOpen] = useState(false);
+
+  const canRead = selectedCards.length === 3;
+
+  const readingSummary = useMemo(() => {
+    if (!canRead) return "";
+    return makeSummary(selectedCards, selectedCategory);
+  }, [canRead, selectedCards, selectedCategory]);
+
+  const combinationInsights = useMemo(() => {
+    if (!canRead) return [];
+    return makeCombinationInsights(selectedCards, selectedCategory);
+  }, [canRead, selectedCards, selectedCategory]);
+
+  const selectCard = (card: TarotCard) => {
+    if (selectedCards.length >= 3 || selectedCards.some((item) => item.id === card.id)) return;
+
+    const nextCards = [...selectedCards, drawCard(card)];
+    setSelectedCards(nextCards);
+    if (nextCards.length === 3) {
+      setIsReadingOpen(true);
+    }
+  };
+
+  const resetReading = () => {
+    setDeck(shuffleDeck(tarotCards));
+    setSelectedCards([]);
+    setIsReadingOpen(false);
+  };
 
   return (
-    <main style={{ padding: "32px", maxWidth: "960px", margin: "0 auto" }}>
-      <h1>Tarot Simple</h1>
-      <p>mode: {mode}</p>
-
-      <section>
-        <h2>카테고리 선택</h2>
-
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value as Category)}
-          style={{
-            padding: "8px",
-            fontSize: "16px",
-            borderRadius: "6px",
-            border: "1px solid #ccc",
-          }}
-        >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {categoryLabels[category]}
-            </option>
-          ))}
-        </select>
-
-        <p>선택한 카테고리: {selectedCategory}</p>
-        <p>화면 표시 이름: {categoryLabels[selectedCategory]}</p>
-      </section>
-
-      <section
-        style={{
-          marginTop: "24px",
-          marginBottom: "24px",
-          padding: "16px",
-          border: "2px solid #333",
-          borderRadius: "12px",
-          background: "#fafafa",
-        }}
-      >
-        <h2>선택한 카드</h2>
-
-        {selectedCard === null ? (
-          <p>아직 선택한 카드가 없습니다. 아래 카드 중 하나를 클릭하세요.</p>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              gap: "16px",
-              alignItems: "flex-start",
-            }}
-          >
-            <img
-              src={selectedCard.img}
-              alt={selectedCard.name}
-              style={{
-                width: "160px",
-                borderRadius: "8px",
-              }}
-            />
-
-            <div>
-              <h3>{selectedCard.name}</h3>
-              <p>키워드: {selectedCard.keywords}</p>
-              <p>선택한 분야: {categoryLabels[selectedCategory]}</p>
-              <p>{selectedCard.meaning[selectedCategory]}</p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2>자료구조화된 카드 목록: {tarotCards.length}장</h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-            gap: "12px",
-          }}
-        >
-          {tarotCards.map((card) => (
-            <article
-              key={card.img}
-              onClick={() => setSelectedCard(card)}
-              style={{
-                padding: "10px",
-                border:
-                  selectedCard?.img === card.img
-                    ? "3px solid #333"
-                    : "1px solid #ddd",
-                borderRadius: "8px",
-                background: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              <img
-                src={card.img}
-                alt={card.name}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  aspectRatio: "2 / 3.4",
-                  objectFit: "cover",
-                  borderRadius: "6px",
-                }}
-              />
-              <h3 style={{ margin: "8px 0 4px" }}>{card.name}</h3>
-              <p style={{ margin: "0 0 8px" }}>keywords: {card.keywords}</p>
-              <pre
-                style={{
-                  margin: 0,
-                  padding: "8px",
-                  overflow: "auto",
-                  fontSize: "11px",
-                  background: "#f6f6f6",
-                  borderRadius: "6px",
-                }}
-              >
-                {JSON.stringify(card, null, 2)}
-              </pre>
-            </article>
-          ))}
+    <main style={styles.page}>
+      <section style={styles.hero}>
+        <div style={styles.heroText}>
+          <p style={styles.eyebrow}>No AI Tarot Reader</p>
+          <h1 style={styles.title}>타로 전문가 시스템</h1>
+          <p style={styles.subtitle}>
+            카테고리를 고르고 3장의 카드를 뽑으면, 보편적인 3카드 스프레드 방식으로 현재의 바탕,
+            흐름의 방향, 실전 조언을 정리합니다.
+          </p>
+        </div>
+        <div style={styles.heroPanel}>
+          <strong style={styles.panelNumber}>{selectedCards.length}/3</strong>
+          <span style={styles.panelText}>선택한 카드</span>
         </div>
       </section>
+
+      <section style={styles.controls}>
+        <div>
+          <h2 style={styles.sectionTitle}>카테고리</h2>
+          <div style={styles.categoryGrid}>
+            {(Object.keys(categoryLabels) as Category[]).map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+                style={{
+                  ...styles.categoryButton,
+                  ...(selectedCategory === category ? styles.categoryButtonActive : {}),
+                }}
+              >
+                {categoryLabels[category]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button type="button" onClick={resetReading} style={styles.resetButton}>
+          새로 섞기
+        </button>
+      </section>
+
+      <section style={styles.spread}>
+        {spreadSlots.map((slot, index) => {
+          const card = selectedCards[index];
+          return (
+            <article key={slot.title} style={styles.slot}>
+              <div>
+                <span style={styles.slotIndex}>0{index + 1}</span>
+                <h3 style={styles.slotTitle}>{slot.title}</h3>
+                <p style={styles.slotSubtitle}>{slot.subtitle}</p>
+              </div>
+              {card ? (
+                <div style={styles.selectedCard}>
+                  <img src={card.img} alt={card.name} style={styles.selectedImage} />
+                  <div>
+                    <strong style={styles.cardName}>{card.name}</strong>
+                    <span style={styles.cardMeta}>
+                      {card.reversed ? "역방향" : "정방향"} · {toneLabels[card.tone]}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ ...styles.emptyCard, ...cardBackStyle }}>
+                  <span>?</span>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </section>
+
+      <section style={styles.deckSection}>
+        <div style={styles.deckHeader}>
+          <div>
+            <h2 style={styles.sectionTitle}>카드 선택</h2>
+            <p style={styles.muted}>직감으로 3장을 고르세요. 이미 선택한 카드는 덱에서 잠깁니다.</p>
+          </div>
+          <span style={styles.countBadge}>총 {tarotCards.length}장</span>
+        </div>
+
+        <div style={styles.deckGrid}>
+          {deck.map((card) => {
+            const picked = selectedCards.some((item) => item.id === card.id);
+            return (
+              <button
+                key={card.id}
+                type="button"
+                disabled={picked || selectedCards.length >= 3}
+                onClick={() => selectCard(card)}
+                aria-label={`${card.name} 선택`}
+                style={{
+                  ...styles.deckCard,
+                  ...cardBackStyle,
+                  ...(picked ? styles.deckCardPicked : {}),
+                }}
+              >
+                <span style={styles.deckMark}>{picked ? "선택됨" : "TAROT"}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {isReadingOpen && canRead && (
+        <section style={styles.result}>
+          <div style={styles.resultHeader}>
+            <div>
+              <p style={styles.eyebrow}>Reading Result</p>
+              <h2 style={styles.resultTitle}>{categoryLabels[selectedCategory]} 리딩</h2>
+            </div>
+            <span style={styles.resultBadge}>3 Card Spread</span>
+          </div>
+
+          <p style={styles.summary}>{readingSummary}</p>
+
+          <div style={styles.insightBox}>
+            <h3 style={styles.insightTitle}>조합 해석</h3>
+            <ul style={styles.insightList}>
+              {combinationInsights.map((insight) => (
+                <li key={insight}>{insight}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div style={styles.readingGrid}>
+            {selectedCards.map((card, index) => (
+              <article key={card.id} style={styles.readingCard}>
+                <img src={card.img} alt={card.name} style={styles.readingImage} />
+                <div>
+                  <span style={styles.slotIndex}>{spreadSlots[index].title}</span>
+                  <h3 style={styles.readingCardTitle}>{card.name}</h3>
+                  <p style={styles.keywordLine}>{card.keywords.join(" · ")}</p>
+                  <p style={styles.readingText}>{getCategoryReading(card, selectedCategory, index)}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div style={styles.actionBox}>
+            <h3 style={styles.actionTitle}>오늘의 실행 조언</h3>
+            <ul style={styles.actionList}>
+              {categoryAdvice[selectedCategory].map((advice) => (
+                <li key={advice}>{advice}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
     </main>
   );
 };
 
-export { initialTarotCards };
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    minHeight: "100vh",
+    padding: "40px 18px 64px",
+    background: "#f7f3ea",
+    color: "#201a17",
+  },
+  hero: {
+    maxWidth: 1180,
+    margin: "0 auto 22px",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 220px",
+    gap: 18,
+    alignItems: "stretch",
+  },
+  heroText: {
+    padding: "36px",
+    borderRadius: 8,
+    background: "#211826",
+    color: "#fff8ed",
+    boxShadow: "0 22px 50px rgba(26, 18, 29, 0.2)",
+  },
+  eyebrow: {
+    margin: "0 0 10px",
+    fontSize: 13,
+    fontWeight: 800,
+    color: "#b88746",
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  title: {
+    margin: 0,
+    fontSize: "clamp(32px, 5vw, 56px)",
+    lineHeight: 1.05,
+    letterSpacing: 0,
+  },
+  subtitle: {
+    maxWidth: 760,
+    margin: "18px 0 0",
+    color: "#eadfce",
+    fontSize: 17,
+  },
+  heroPanel: {
+    borderRadius: 8,
+    background: "#fffaf1",
+    border: "1px solid #ead8bb",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: 190,
+  },
+  panelNumber: {
+    fontSize: 48,
+    lineHeight: 1,
+  },
+  panelText: {
+    marginTop: 10,
+    color: "#766551",
+    fontWeight: 700,
+  },
+  controls: {
+    maxWidth: 1180,
+    margin: "0 auto 22px",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 16,
+    alignItems: "end",
+  },
+  sectionTitle: {
+    margin: "0 0 10px",
+    fontSize: 22,
+  },
+  categoryGrid: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryButton: {
+    minHeight: 42,
+    borderRadius: 8,
+    border: "1px solid #d8c4a5",
+    background: "#fffaf1",
+    color: "#2a201b",
+    fontWeight: 800,
+  },
+  categoryButtonActive: {
+    background: "#8f5c2f",
+    color: "#fffaf1",
+    borderColor: "#8f5c2f",
+  },
+  resetButton: {
+    minHeight: 42,
+    borderRadius: 8,
+    border: "1px solid #2b211d",
+    background: "#2b211d",
+    color: "#fffaf1",
+    fontWeight: 800,
+  },
+  spread: {
+    maxWidth: 1180,
+    margin: "0 auto 22px",
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+  },
+  slot: {
+    minHeight: 220,
+    padding: 18,
+    borderRadius: 8,
+    background: "#fffaf1",
+    border: "1px solid #ead8bb",
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 14,
+  },
+  slotIndex: {
+    display: "block",
+    color: "#9c6b36",
+    fontSize: 12,
+    fontWeight: 900,
+  },
+  slotTitle: {
+    margin: "4px 0",
+    fontSize: 18,
+  },
+  slotSubtitle: {
+    margin: 0,
+    color: "#766551",
+    fontSize: 14,
+  },
+  emptyCard: {
+    width: 92,
+    height: 138,
+    borderRadius: 8,
+    display: "grid",
+    placeItems: "center",
+    color: "#f2d49a",
+    fontSize: 28,
+    flex: "0 0 auto",
+  },
+  selectedCard: {
+    width: 132,
+    flex: "0 0 auto",
+  },
+  selectedImage: {
+    width: "100%",
+    aspectRatio: "2 / 3.35",
+    objectFit: "cover",
+    borderRadius: 8,
+    boxShadow: "0 12px 24px rgba(26, 18, 29, 0.22)",
+  },
+  cardName: {
+    display: "block",
+    marginTop: 8,
+    fontSize: 14,
+  },
+  cardMeta: {
+    display: "block",
+    color: "#7a6750",
+    fontSize: 12,
+  },
+  deckSection: {
+    maxWidth: 1180,
+    margin: "0 auto 22px",
+    padding: 20,
+    borderRadius: 8,
+    background: "#efe4d1",
+  },
+  deckHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 14,
+    alignItems: "start",
+    marginBottom: 14,
+  },
+  muted: {
+    margin: 0,
+    color: "#75644f",
+  },
+  countBadge: {
+    padding: "8px 10px",
+    borderRadius: 8,
+    background: "#fffaf1",
+    color: "#6b4d2d",
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  deckGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(74px, 1fr))",
+    gap: 10,
+  },
+  deckCard: {
+    width: "100%",
+    aspectRatio: "2 / 3.2",
+    borderRadius: 8,
+    display: "grid",
+    placeItems: "center",
+    color: "#f4d696",
+    fontSize: 11,
+    fontWeight: 900,
+    padding: 4,
+  },
+  deckCardPicked: {
+    opacity: 0.42,
+    transform: "translateY(4px)",
+  },
+  deckMark: {
+    border: "1px solid rgba(244, 214, 150, 0.5)",
+    borderRadius: 999,
+    padding: "4px 6px",
+  },
+  result: {
+    maxWidth: 1180,
+    margin: "0 auto",
+    padding: 24,
+    borderRadius: 8,
+    background: "#fffaf1",
+    border: "1px solid #ead8bb",
+    boxShadow: "0 18px 44px rgba(40, 28, 18, 0.12)",
+  },
+  resultHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "start",
+    gap: 16,
+  },
+  resultTitle: {
+    margin: 0,
+    fontSize: 30,
+  },
+  resultBadge: {
+    padding: "8px 10px",
+    borderRadius: 8,
+    background: "#2b211d",
+    color: "#fffaf1",
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  summary: {
+    margin: "18px 0",
+    padding: 16,
+    borderRadius: 8,
+    background: "#f1e5d1",
+    color: "#342820",
+    fontSize: 17,
+    fontWeight: 700,
+  },
+  insightBox: {
+    margin: "0 0 16px",
+    padding: 16,
+    borderRadius: 8,
+    background: "#f7efe0",
+    border: "1px solid #ead8bb",
+  },
+  insightTitle: {
+    margin: "0 0 8px",
+    fontSize: 18,
+  },
+  insightList: {
+    margin: 0,
+    paddingLeft: 20,
+    color: "#3c3129",
+  },
+  readingGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 14,
+  },
+  readingCard: {
+    display: "grid",
+    gridTemplateColumns: "92px minmax(0, 1fr)",
+    gap: 14,
+    padding: 14,
+    borderRadius: 8,
+    border: "1px solid #ead8bb",
+    background: "#fffdf8",
+  },
+  readingImage: {
+    width: 92,
+    aspectRatio: "2 / 3.35",
+    objectFit: "cover",
+    borderRadius: 8,
+  },
+  readingCardTitle: {
+    margin: "3px 0",
+    fontSize: 18,
+  },
+  keywordLine: {
+    margin: "0 0 8px",
+    color: "#8b673d",
+    fontSize: 13,
+    fontWeight: 800,
+  },
+  readingText: {
+    margin: 0,
+    color: "#3c3129",
+    fontSize: 14,
+  },
+  actionBox: {
+    marginTop: 16,
+    padding: 18,
+    borderRadius: 8,
+    background: "#211826",
+    color: "#fff8ed",
+  },
+  actionTitle: {
+    margin: "0 0 8px",
+    fontSize: 18,
+  },
+  actionList: {
+    margin: 0,
+    paddingLeft: 20,
+  },
+};
+
+export { tarotCards };
 export default Tratot_no_ai;
