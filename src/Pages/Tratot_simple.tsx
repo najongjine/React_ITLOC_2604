@@ -809,6 +809,7 @@ const Tratot_simple: React.FC = () => {
   const mode = import.meta.env.MODE;
   const [categories] = useState<Category[]>(["love", "money", "study"]);
   const [tarotCards] = useState<TarotCard[]>(initialTarotCards);
+  const [selectedCategory, setSelectedCategory] = useState<Category>("love");
 
   return (
     <main style={{ padding: "32px", maxWidth: "960px", margin: "0 auto" }}>
@@ -816,15 +817,28 @@ const Tratot_simple: React.FC = () => {
       <p>mode: {mode}</p>
 
       <section>
-        <h2>카테고리 목록</h2>
-        <ul>
-          {categories.map((category) => (
-            <li key={category}>
-              {category}: {categoryLabels[category]}
-            </li>
-          ))}
-        </ul>
-      </section>
+  <h2>카테고리 선택</h2>
+
+  <select
+    value={selectedCategory}
+    onChange={(e) => setSelectedCategory(e.target.value as Category)}
+    style={{
+      padding: "8px",
+      fontSize: "16px",
+      borderRadius: "6px",
+      border: "1px solid #ccc",
+    }}
+  >
+    {categories.map((category) => (
+      <option key={category} value={category}>
+        {categoryLabels[category]}
+      </option>
+    ))}
+  </select>
+
+  <p>선택한 카테고리: {selectedCategory}</p>
+  <p>화면 표시 이름: {categoryLabels[selectedCategory]}</p>
+</section>
 
       <section>
         <h2>자료구조화된 카드 목록: {tarotCards.length}장</h2>
