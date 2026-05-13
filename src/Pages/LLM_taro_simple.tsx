@@ -9,7 +9,12 @@ const LLM_taro_simple: React.FC = () => {
       <div>mode: {mode}</div>
       <div>
         <label>질문입력:</label>
-        <textarea />
+        <textarea
+          style={{
+            width: "40%",
+            height: "150px",
+          }}
+        />
       </div>
     </div>
   );
