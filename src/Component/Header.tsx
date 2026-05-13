@@ -9,6 +9,7 @@ const menuItems = [
   { path: "/", label: "Home" },
   { path: "/tratot_simple", label: "타로심플" },
   { path: "/tratot_no_ai", label: "타로전문가" },
+  { path: "/llm_taro_simple", label: "LLM 타로 초간단" },
 ];
 
 const Header: React.FC = () => {
@@ -31,7 +32,11 @@ const Header: React.FC = () => {
               <span className="header-user-name">{user.display_name}</span>
               <span className="header-user-email">{user.email}</span>
             </div>
-            <button type="button" className="header-logout" onClick={handleLogout}>
+            <button
+              type="button"
+              className="header-logout"
+              onClick={handleLogout}
+            >
               로그아웃
             </button>
           </div>
