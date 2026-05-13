@@ -7,6 +7,10 @@ const LLM_taro_simple: React.FC = () => {
     <div className="">
       <div>LLM_taro_simple</div>
       <div>mode: {mode}</div>
+      <div>
+        <label>질문입력:</label>
+        <textarea />
+      </div>
     </div>
   );
 };
