@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 const LLM_taro_simple: React.FC = () => {
   const mode = import.meta.env.MODE;
+
   const [myinput, setmyinput] = useState("");
   return (
     <div className="">
@@ -20,6 +21,9 @@ const LLM_taro_simple: React.FC = () => {
             height: "150px",
           }}
         />
+        <div>
+          <button>확인</button>
+        </div>
       </div>
     </div>
   );
