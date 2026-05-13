@@ -11,6 +11,7 @@ import ContextAPI_Test from "./Pages/ContextAPI_Test";
 import Login from "./Pages/Login";
 import Tratot_simple from "./Pages/Tratot_simple";
 import Tratot_no_ai from "./Pages/Tratot_no_ai";
+import LLM_taro_simple from "./Pages/LLM_taro_simple";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/contextapi_test" element={<ContextAPI_Test />} />
           <Route path="/tratot_simple" element={<Tratot_simple />} />
           <Route path="/tratot_no_ai" element={<Tratot_no_ai />} />
+          <Route path="/llm_taro_simple" element={<LLM_taro_simple />} />
         </Routes>
         <Footer />
       </BrowserRouter>
