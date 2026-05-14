@@ -3,6 +3,8 @@ https://chatgpt.com/share/6a05153a-5e3c-83a8-8be2-1a864b9ffc2f
  */
 import React, { useState } from "react";
 
+type TarotPosition = "past" | "present" | "future";
+
 type TarotCard = {
   id: string;
   name: string;
@@ -10,7 +12,16 @@ type TarotCard = {
 };
 
 type DrawnTarotCard = TarotCard & {
+  position: TarotPosition;
   reversed: boolean;
+};
+
+const tarotPositions: TarotPosition[] = ["past", "present", "future"];
+
+const positionLabels: Record<TarotPosition, string> = {
+  past: "과거",
+  present: "현재",
+  future: "미래",
 };
 
 const majorCards = [
@@ -80,6 +91,12 @@ const tarotCards: TarotCard[] = [
   ),
 ];
 
+const resetPositions = (cards: DrawnTarotCard[]) =>
+  cards.map((card, index) => ({
+    ...card,
+    position: tarotPositions[index],
+  }));
+
 const LLM_taro_simple: React.FC = () => {
   const mode = import.meta.env.MODE;
   const baseUrl = import.meta.env.VITE_BASE_SERVER_URL;
@@ -91,14 +108,21 @@ const LLM_taro_simple: React.FC = () => {
   const selectCard = (card: TarotCard) => {
     setSelectedCards((prevCards) => {
       if (prevCards.some((item) => item.id === card.id)) {
-        return prevCards.filter((item) => item.id !== card.id);
+        return resetPositions(prevCards.filter((item) => item.id !== card.id));
       }
 
       if (prevCards.length >= 3) {
         return prevCards;
       }
 
-      return [...prevCards, { ...card, reversed: Math.random() > 0.5 }];
+      return [
+        ...prevCards,
+        {
+          ...card,
+          position: tarotPositions[prevCards.length],
+          reversed: Math.random() > 0.5,
+        },
+      ];
     });
   };
 
@@ -226,10 +250,12 @@ const LLM_taro_simple: React.FC = () => {
                   }}
                 />
                 <div>
-                  <div style={{ fontWeight: 700 }}>{index + 1}번째 카드</div>
+                  <div style={{ fontWeight: 700 }}>
+                    {index + 1}번째 카드 · {positionLabels[card.position]}
+                  </div>
                   <div>{card.name}</div>
                   <div style={{ fontSize: "13px", color: "#666" }}>
-                    {card.reversed ? "역방향" : "정방향"}
+                    {card.position} · {card.reversed ? "역방향" : "정방향"}
                   </div>
                   <button
                     type="button"
