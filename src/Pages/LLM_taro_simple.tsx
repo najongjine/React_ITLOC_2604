@@ -140,6 +140,7 @@ const LLM_taro_simple: React.FC = () => {
     try {
       const formData = new URLSearchParams();
       formData.append("userquery", myinput);
+      formData.append("selected_cards", JSON.stringify(selectedCards));
 
       const response = await fetch(`${baseUrl}/llm/askllm`, {
         method: "POST",
