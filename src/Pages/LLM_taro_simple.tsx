@@ -103,6 +103,8 @@ const LLM_taro_simple: React.FC = () => {
 
   const [myinput, setmyinput] = useState("");
   const [answer, setAnswer] = useState("");
+
+  // 우리한테 중요한건 이거. 고른 카드 정보.
   const [selectedCards, setSelectedCards] = useState<DrawnTarotCard[]>([]);
 
   const selectCard = (card: TarotCard) => {
