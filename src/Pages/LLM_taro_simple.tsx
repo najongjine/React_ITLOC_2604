@@ -3,6 +3,11 @@ https://chatgpt.com/share/6a05153a-5e3c-83a8-8be2-1a864b9ffc2f
  */
 import React, { useState } from "react";
 
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 type TarotPosition = "past" | "present" | "future";
 
 type TarotCard = {
@@ -106,6 +111,7 @@ const LLM_taro_simple: React.FC = () => {
 
   // 우리한테 중요한건 이거. 고른 카드 정보.
   const [selectedCards, setSelectedCards] = useState<DrawnTarotCard[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
   const selectCard = (card: TarotCard) => {
     setSelectedCards((prevCards) => {
@@ -141,6 +147,7 @@ const LLM_taro_simple: React.FC = () => {
       const formData = new URLSearchParams();
       formData.append("userquery", myinput);
       formData.append("selected_cards", JSON.stringify(selectedCards));
+      formData.append("chat_history", JSON.stringify(chatHistory));
 
       const response = await fetch(`${baseUrl}/llm/askllm`, {
         method: "POST",
@@ -156,7 +163,18 @@ const LLM_taro_simple: React.FC = () => {
       console.log(result);
 
       if (result.success) {
-        setAnswer(result.data.answer);
+        setChatHistory([
+          ...chatHistory,
+          {
+            role: "user",
+            content: myinput,
+          },
+          {
+            role: "assistant",
+            content: answer,
+          },
+        ]);
+        setmyinput("");
       } else {
         setAnswer("요청 실패");
       }
