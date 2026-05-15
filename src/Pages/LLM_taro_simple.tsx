@@ -175,6 +175,9 @@ const LLM_taro_simple: React.FC = () => {
           },
         ]);
         setmyinput("");
+        setAnswer(result?.data?.answer || "");
+        console.log(`# chatHistory: \n`, chatHistory);
+        console.log(`# answer: \n`, result?.data?.answer);
       } else {
         setAnswer("요청 실패");
       }
